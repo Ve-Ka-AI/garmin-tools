@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garmin Watch Finder: Locate Owner</title>
+  <meta name="description" content="Client-side Garmin .fit batch processor for finding lost watch owner starting points safely and privately.">
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Leaflet JS CDN script -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- SheetJS CDN script -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Sdílený FIT parser importován přímo ve script[type=module] -->
+
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --warning-bg: rgba(239, 68, 68, 0.15);
+      --warning-border: #f87171;
+      --warning-text: #fca5a5;
+      --gold: #fbbf24;
+      --silver: #94a3b8;
+      --bronze: #d97706;
+      --rank4: #818cf8;
+      --rank5: #c084fc;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.12) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1300px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Top Bar Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+    }
+
+    .brand-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: #ffffff;
+      fill: none;
+      stroke-width: 2.2;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffffff, #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .privacy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.4rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .lang-switcher {
+      display: flex;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 9999px;
+      padding: 3px;
+    }
+
+    .lang-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .lang-btn.active {
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Warning Banner */
+    .warning-banner {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
+    }
+
+    .warning-icon {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      background: rgba(239, 68, 68, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f87171;
+      margin-top: 2px;
+    }
+
+    .warning-content h3 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #fca5a5;
+      margin-bottom: 0.3rem;
+      letter-spacing: 0.05em;
+    }
+
+    .warning-content p {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: #fee2e2;
+    }
+
+    /* Upload Dropzone */
+    .dropzone {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 2px dashed rgba(56, 189, 248, 0.4);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.08);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.2);
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .btn-pick-folder {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      color: #ffffff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      margin-top: 1.25rem;
+      position: relative;
+      z-index: 5;
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .btn-pick-folder:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(56, 189, 248, 0.5);
+    }
+
+    .cloud-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1rem;
+      background: rgba(56, 189, 248, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .cloud-icon svg {
+      width: 36px;
+      height: 36px;
+      stroke-width: 2;
+    }
+
+    .dropzone-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.4rem;
+    }
+
+    .dropzone-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Slider Card */
+    .slider-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .slider-label {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .slider-value-badge {
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      color: #ffffff;
+      padding: 0.25rem 0.85rem;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+    }
+
+    .custom-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(15, 23, 42, 0.8);
+      outline: none;
+      cursor: pointer;
+      border: 1px solid var(--card-border);
+    }
+
+    .custom-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      transition: transform 0.1s ease;
+    }
+
+    .custom-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    /* Status & Progress Bar */
+    .status-bar {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1rem 1.5rem;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status-check {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #10b981;
+    }
+
+    .status-text {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .btn-reload-files {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-reload-files:hover {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* Main Results Layout */
+    .results-section {
+      display: none;
+      flex-direction: column;
+      gap: 1.5rem;
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .results-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .export-buttons-group {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-export {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #ffffff;
+      border: none;
+      padding: 0.65rem 1.15rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-export-top {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+    }
+
+    .btn-export-top:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+    }
+
+    .btn-export-all {
+      background: linear-gradient(135deg, #10b981, #059669);
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-export-all:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 7fr 5fr;
+      gap: 1.5rem;
+      align-items: stretch;
+    }
+
+    @media (max-width: 992px) {
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Panel: Map & Table */
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .map-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .map-header {
+      padding: 1rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #map {
+      height: 440px;
+      width: 100%;
+      z-index: 1;
+    }
+
+    .table-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .table-container {
+      max-height: 340px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text-muted);
+      font-weight: 700;
+      padding: 0.85rem 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      border-bottom: 1px solid var(--card-border);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    tr:hover td {
+      background: rgba(56, 189, 248, 0.06);
+    }
+
+    .maps-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .maps-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Right Panel: Top 5 Clusters */
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .clusters-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .clusters-header {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    #clustersList {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-grow: 1;
+      gap: 0.6rem;
+      margin-top: 0.75rem;
+    }
+
+    .cluster-item {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      flex: 1;
+      justify-content: center;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .cluster-item:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .cluster-item.rank-1 { border-left: 4px solid var(--gold); }
+    .cluster-item.rank-2 { border-left: 4px solid var(--silver); }
+    .cluster-item.rank-3 { border-left: 4px solid var(--bronze); }
+    .cluster-item.rank-4 { border-left: 4px solid var(--rank4); }
+    .cluster-item.rank-5 { border-left: 4px solid var(--rank5); }
+
+    .cluster-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cluster-badge {
+      font-size: 0.78rem;
+      font-weight: 800;
+      padding: 0.18rem 0.55rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-gold {
+      background: rgba(251, 191, 36, 0.2);
+      color: var(--gold);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+    }
+
+    .badge-silver {
+      background: rgba(148, 163, 184, 0.2);
+      color: var(--silver);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+
+    .badge-bronze {
+      background: rgba(217, 119, 6, 0.2);
+      color: #fb923c;
+      border: 1px solid rgba(217, 119, 6, 0.4);
+    }
+
+    .badge-rank4 {
+      background: rgba(129, 140, 248, 0.2);
+      color: var(--rank4);
+      border: 1px solid rgba(129, 140, 248, 0.4);
+    }
+
+    .badge-rank5 {
+      background: rgba(192, 132, 252, 0.2);
+      color: var(--rank5);
+      border: 1px solid rgba(192, 132, 252, 0.4);
+    }
+
+    .cluster-count {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .cluster-location-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .cluster-last-date {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .cluster-coords {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .cluster-link {
+      align-self: flex-start;
+      margin-top: 0.1rem;
+      font-size: 0.78rem;
+    }
+
+    /* Custom Leaflet Markers */
+    .custom-cluster-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      border-radius: 50%;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+      border: 2px solid white;
+    }
+    .marker-gold { background: #d97706; }
+    .marker-silver { background: #64748b; }
+    .marker-bronze { background: #b45309; }
+    .marker-rank4 { background: #4f46e5; }
+    .marker-rank5 { background: #9333ea; }
+
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Top Header -->
+    <header>
+      <div class="brand">
+        <a href="../../index.html" style="text-decoration:none; display:flex; align-items:center; gap:0.5rem; color:var(--text-muted); font-size:0.82rem; font-weight:600; padding:4px 10px; border-radius:8px; border:1px solid var(--card-border); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--card-border)'; this.style.color='var(--text-muted)'">← Hub</a>
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="10" r="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1 id="appTitle">Nálezce hodinek Garmin: Vyhledání majitele</h1>
+      </div>
+
+      <div class="header-controls">
+        <div class="privacy-badge" id="privacyBadge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span id="privacyText">100% Lokální zpracování (Browser-Only)</span>
+        </div>
+
+        <div class="lang-switcher">
+          <button class="lang-btn active" id="btnCZ" onclick="setLanguage('cz')">CZ</button>
+          <button class="lang-btn" id="btnEN" onclick="setLanguage('en')">EN</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Prominent Warning Banner -->
+    <div class="warning-banner">
+      <div class="warning-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div class="warning-content">
+        <h3 id="warningTitle">UPOZORNĚNÍ</h3>
+        <p id="warningText">
+          UPOZORNĚNÍ: Nástroj slouží jako pomůcka pro poctivé nálezce ztracených sportovních zařízení. Zpracování .fit souborů probíhá výhradně lokálně ve vašem prohlížeči – žádná data se neukládají ani neodesílají na server. Zjištěnou lokalitu nepoužívejte k přímému kontaktování předpokládaného majitele. Hodinky spolu s vygenerovaným přehledem startovních bodů doporučujeme předat Policii ČR nebo na oddělení Ztrát a nálezů příslušného městského úřadu.
+        </p>
+      </div>
+    </div>
+
+    <!-- Cluster Radius Tolerance Slider Card -->
+    <div class="slider-card" id="sliderCard">
+      <div class="slider-label-row">
+        <label for="radiusSlider" class="slider-label">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="4"/>
+          </svg>
+          <span id="sliderLabelText">Toleranční okruh shlukování (rádius):</span>
+        </label>
+        <span class="slider-value-badge" id="radiusValueBadge">100 m</span>
+      </div>
+      <input type="range" id="radiusSlider" min="10" max="500" step="10" value="100" class="custom-slider" oninput="onRadiusChange(this.value)">
+    </div>
+
+    <!-- Upload Zone -->
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" multiple accept=".fit" onchange="handleFileSelect(event)">
+
+      <div class="cloud-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M16 16l-4-4-4 4M12 12v9" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="dropzone-title" id="dropzoneTitle">Přetáhněte sem .fit soubory nebo klikněte pro výběr</div>
+      <div class="dropzone-subtitle" id="dropzoneSubtitle">Podporováno je přetažení z hodinek i hromadný výběr souborů</div>
+
+      <button class="btn-pick-folder" onclick="event.stopPropagation(); document.getElementById('fileInput').click();">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span id="btnPickFolderText">📂 Vybrat .fit soubory</span>
+      </button>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar" id="statusBar">
+      <div class="spinner" id="statusSpinner"></div>
+      <div class="status-check" id="statusCheck">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="22 4 12 14.01 9 11.01" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="status-text" id="statusText">Zpracovávám soubory...</div>
+      <button class="btn-reload-files" id="btnReloadFiles" style="display:none;" onclick="resetDropzoneView()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
+        <span id="btnReloadFilesText">Nahrát jiné soubory</span>
+      </button>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section" id="resultsSection">
+      
+      <div class="results-header">
+        <div class="results-title" id="resultsTitle">Přehled nalezených startovních lokací</div>
+        <div class="export-buttons-group">
+          <button class="btn-export btn-export-top" onclick="exportTop5ToExcel()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+            <span id="btnExportTopText">Stáhnout TOP 5 lokalit (pro PČR)</span>
+          </button>
+          <button class="btn-export btn-export-all" onclick="exportAllToExcel()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span id="btnExportAllText">Stáhnout všechny starty do Excelu</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="results-grid">
+        
+        <!-- Left Panel: Map + Table -->
+        <div class="left-panel">
+          
+          <div class="map-card">
+            <div class="map-header">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="1 6 1 22 8 18 15 22 22 18 22 2 15 6 8 2 1 6"/>
+                <line x1="8" y1="2" x2="8" y2="18"/>
+                <line x1="15" y1="6" x2="15" y2="22"/>
+              </svg>
+              <span id="mapHeader">Interaktivní Mapa Startovních Bodů</span>
+            </div>
+            <div id="map"></div>
+          </div>
+
+          <div class="table-card">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="colFile">Soubor</th>
+                    <th id="colDate">Datum/Čas Startu</th>
+                    <th id="colCoords">Souřadnice</th>
+                    <th id="colLocation">Lokalita</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody">
+                  <!-- Table rows will be populated here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Panel: Top 5 Clusters -->
+        <div class="right-panel">
+          <div class="clusters-card">
+            <div class="clusters-header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span id="topClustersHeader">Top 5 Nejčastější Starty</span>
+            </div>
+
+            <div id="clustersList">
+              <!-- Top 5 cluster cards populated here -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <footer>
+      Garmin Watch Finder &bull; 100% Client-Side Privacy Preserving Tool &bull; OpenStreetMap & Leaflet.js
+    </footer>
+
+  </div>
+
+  <script type="module">
+    // --- Import sdíleného FIT parseru ---
+    import { parseFitBinary, calcHaversine } from '../../shared/fit-core.js';
+    // --- Translations (I18n) ---
+    const i18n = {
+      cz: {
+        appTitle: "Nálezce hodinek Garmin: Vyhledání majitele",
+        warningTitle: "UPOZORNĚNÍ",
+        warningText: "UPOZORNĚNÍ: Nástroj slouží jako pomůcka pro poctivé nálezce ztracených sportovních zařízení. Zpracování .fit souborů probíhá výhradně lokálně ve vašem prohlížeči – žádná data se neukládají ani neodesílají na server. Zjištěnou lokalitu nepoužívejte k přímému kontaktování předpokládaného majitele. Hodinky spolu s vygenerovaným přehledem startovních bodů doporučujeme předat Policii ČR nebo na oddělení Ztrát a nálezů příslušného městského úřadu.",
+        dropzoneTitle: "Přetáhněte sem .fit soubory nebo klikněte pro výběr",
+        dropzoneSubtitle: "Podporovány jsou dávkové nahrávky .fit souborů",
+        resultsTitle: "Přehled nalezených startovních lokací",
+        mapHeader: "Interaktivní Mapa Startovních Bodů",
+        topClustersHeader: "Top 5 Nejčastější Starty",
+        clusterRadiusText: "startováno v okruhu {radius}m",
+        sliderLabelText: "Toleranční okruh shlukování (rádius):",
+        openInGoogleMaps: "Zobrazit na Google Maps",
+        btnExportTopText: "Stáhnout TOP 5 lokalit (pro Policii ČR)",
+        btnExportAllText: "Stáhnout všechny starty do Excelu",
+        btnPickFolderText: "📂 Vybrat .fit soubory",
+        btnReloadFilesText: "Nahrát jiné soubory",
+        noFitFilesInFolder: "Ve vybrané složce nebyly nalezeny žádné .fit soubory.",
+        colFile: "Soubor",
+        colDate: "Datum/Čas Startu",
+        colCoords: "Souřadnice",
+        colLocation: "Lokalita",
+        colRank: "Pořadí",
+        colLocationName: "Lokalita (Adresa / Čtvrť)",
+        colStartCount: "Počet startů (v okruhu)",
+        colLastStarted: "Naposledy startováno",
+        colMapsLink: "Odkaz na Google Maps",
+        statusInitialLoading: "Načítám soubory, vydržte...",
+        statusProcessing: "Zpracovávám soubory ({progress}/{total})...",
+        statusSuccess: "Úspěšně zpracováno {count} souborů ({gpsCount} s GPS)",
+        noGpsFound: "Žádné platné GPS souřadnice nebyly nalezeny.",
+        privacyText: "100% Lokální zpracování (Browser-Only)",
+        topRank: "MÍSTO",
+        lastStartedOn: "Naposledy startováno dne {date}",
+        top1Tooltip: "Top 1: {count}x start",
+        top2Tooltip: "Top 2: {count}x start",
+        top3Tooltip: "Top 3: {count}x start",
+        top4Tooltip: "Top 4: {count}x start",
+        top5Tooltip: "Top 5: {count}x start",
+        pointTooltip: "Start: {time}<br>Soubor: {file}",
+        unknownTime: "Neznámý čas",
+        loadingAddress: "Načítám adresu...",
+        unknownLocation: "Neznámá lokalita"
+      },
+      en: {
+        appTitle: "Garmin Watch Finder: Locate Owner",
+        warningTitle: "WARNING",
+        warningText: "WARNING: This tool is intended as an aid for honest finders of lost sports equipment. The processing of .fit files occurs exclusively locally in your browser – no data is stored or sent to any server. Do not use the identified location to contact the assumed owner directly. We recommend turning in the watch, along with the generated overview of start points, to the appropriate authorities (e.g., Police or Lost & Found).",
+        dropzoneTitle: "Drag & drop .fit files here or click to select",
+        dropzoneSubtitle: "Supports batch uploads of .fit files",
+        resultsTitle: "Discovered Starting Locations Overview",
+        mapHeader: "Interactive Start Points Map",
+        topClustersHeader: "Top 5 Most Frequent Starts",
+        clusterRadiusText: "started within {radius}m radius",
+        sliderLabelText: "Clustering Tolerance Radius:",
+        openInGoogleMaps: "Show on Google Maps",
+        btnExportTopText: "Download TOP 5 Locations (for Police)",
+        btnExportAllText: "Download All Starts to Excel",
+        btnPickFolderText: "📂 Select .fit files",
+        btnReloadFilesText: "Load other files",
+        noFitFilesInFolder: "No .fit files were found in the selected folder.",
+        colFile: "File",
+        colDate: "Start Date/Time",
+        colCoords: "Coordinates",
+        colLocation: "Location",
+        colRank: "Rank",
+        colLocationName: "Location (Address / District)",
+        colStartCount: "Start Count (within radius)",
+        colLastStarted: "Last Started Date",
+        colMapsLink: "Google Maps Link",
+        statusInitialLoading: "Loading files, please wait...",
+        statusProcessing: "Processing files ({progress}/{total})...",
+        statusSuccess: "Successfully processed {count} files ({gpsCount} with GPS)",
+        noGpsFound: "No valid GPS coordinates found.",
+        privacyText: "100% Local Processing (Browser-Only)",
+        topRank: "PLACE",
+        lastStartedOn: "Last started on {date}",
+        top1Tooltip: "Top 1: {count}x started",
+        top2Tooltip: "Top 2: {count}x started",
+        top3Tooltip: "Top 3: {count}x started",
+        top4Tooltip: "Top 4: {count}x started",
+        top5Tooltip: "Top 5: {count}x started",
+        pointTooltip: "Start: {time}<br>File: {file}",
+        unknownTime: "Unknown time",
+        loadingAddress: "Fetching address...",
+        unknownLocation: "Unknown location"
+      }
+    };
+
+    let currentLang = 'cz';
+    let currentRadius = 100; // Default radius in meters
+    let parsedResults = [];
+    let topClusters = [];
+    let map = null;
+    let mapMarkersLayer = null;
+
+    // Set Language
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.getElementById('btnCZ').classList.toggle('active', lang === 'cz');
+      document.getElementById('btnEN').classList.toggle('active', lang === 'en');
+      
+      const t = i18n[lang];
+      document.getElementById('appTitle').innerText = t.appTitle;
+      document.getElementById('privacyText').innerText = t.privacyText;
+      document.getElementById('warningTitle').innerText = t.warningTitle;
+      document.getElementById('warningText').innerText = t.warningText;
+      document.getElementById('sliderLabelText').innerText = t.sliderLabelText;
+      document.getElementById('dropzoneTitle').innerText = t.dropzoneTitle;
+      document.getElementById('dropzoneSubtitle').innerText = t.dropzoneSubtitle;
+      document.getElementById('btnPickFolderText').innerText = t.btnPickFolderText;
+      document.getElementById('btnReloadFilesText').innerText = t.btnReloadFilesText;
+      document.getElementById('resultsTitle').innerText = t.resultsTitle;
+      document.getElementById('btnExportTopText').innerText = t.btnExportTopText;
+      document.getElementById('btnExportAllText').innerText = t.btnExportAllText;
+      document.getElementById('mapHeader').innerText = t.mapHeader;
+      document.getElementById('topClustersHeader').innerText = t.topClustersHeader;
+      document.getElementById('colFile').innerText = t.colFile;
+      document.getElementById('colDate').innerText = t.colDate;
+      document.getElementById('colCoords').innerText = t.colCoords;
+      document.getElementById('colLocation').innerText = t.colLocation;
+
+      if (parsedResults.length > 0) {
+        renderTable();
+        renderClustersList();
+        renderMap();
+      }
+    }
+
+    // --- Dynamic Slider Change ---
+    function onRadiusChange(value) {
+      currentRadius = parseInt(value);
+      document.getElementById('radiusValueBadge').innerText = `${currentRadius} m`;
+      
+      if (parsedResults.length > 0) {
+        topClusters = computeClusters(parsedResults, currentRadius);
+        renderClustersList();
+        renderMap();
+      }
+    }
+
+    // --- Drag & Drop Event Listeners ---
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processFileList(e.dataTransfer.files);
+      }
+    });
+
+    function handleFileSelect(e) {
+      if (e.target.files && e.target.files.length > 0) {
+        processFileList(e.target.files);
+      }
+    }
+
+    // --- Haversine Distance — deleguje na sdílený modul shared/fit-core.js ---
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+      return calcHaversine(lat1, lon1, lat2, lon2);
+    }
+
+    // --- Reverse Geocoding via Nominatim API ---
+    const geocodeCache = {};
+    async function fetchReverseGeocode(lat, lon) {
+      const cacheKey = `${lat.toFixed(5)},${lon.toFixed(5)}`;
+      if (geocodeCache[cacheKey]) return geocodeCache[cacheKey];
+
+      try {
+        const lang = currentLang === 'cz' ? 'cs' : 'en';
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=16&accept-language=${lang}`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'GarminWatchFinder/1.0' } });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const addr = data.address || {};
+        
+        const parts = [];
+        const road = addr.road || addr.pedestrian || addr.footway || addr.suburb || addr.neighbourhood;
+        const district = addr.suburb || addr.quarter || addr.city_district || addr.borough;
+        const city = addr.city || addr.town || addr.village || addr.municipality;
+
+        if (road) parts.push(road);
+        if (district && district !== road) parts.push(district);
+        if (city && city !== district && city !== road) parts.push(city);
+
+        const locName = parts.length > 0 ? parts.join(', ') : (data.display_name ? data.display_name.split(',').slice(0, 2).join(',') : null);
+        if (locName) {
+          geocodeCache[cacheKey] = locName;
+        }
+        return locName;
+      } catch (e) {
+        console.warn("Reverse geocode error:", e);
+        return null;
+      }
+    }
+
+    // --- Ultra-Fast Native Binary FIT Position Extractor (Fallback Engine) ---
+    // --- FIT Parser Wrapper — deleguje na sdílený modul shared/fit-core.js (position-only) ---
+    function parseFitNative(arrayBuffer) {
+      return parseFitBinary(arrayBuffer, { mode: 'position-only' });
+    }
+
+    // --- Helper Position Extractor for FitParser Object Output ---
+    function extractFirstPosition(fitData) {
+      let rawLat = null, rawLng = null, timestamp = null;
+      function isValidPos(v) { return v !== null && v !== undefined && v !== 0; }
+
+      if (fitData && fitData.records && Array.isArray(fitData.records)) {
+        for (const rec of fitData.records) {
+          const lat = rec.position_lat !== undefined ? rec.position_lat : rec.start_position_lat;
+          const lng = rec.position_long !== undefined ? rec.position_long : rec.start_position_long;
+          if (isValidPos(lat) && isValidPos(lng)) {
+            rawLat = lat; rawLng = lng; timestamp = rec.timestamp || timestamp;
+            break;
+          }
+        }
+      }
+
+      if ((!isValidPos(rawLat) || !isValidPos(rawLng)) && fitData && fitData.sessions && Array.isArray(fitData.sessions)) {
+        for (const sess of fitData.sessions) {
+          const lat = sess.start_position_lat !== undefined ? sess.start_position_lat : sess.position_lat;
+          const lng = sess.start_position_long !== undefined ? sess.start_position_long : sess.position_long;
+          if (isValidPos(lat) && isValidPos(lng)) {
+            rawLat = lat; rawLng = lng; timestamp = sess.start_time || sess.timestamp || timestamp;
+            break;
+          }
+        }
+      }
+
+      if (!isValidPos(rawLat) || !isValidPos(rawLng)) return null;
+
+      let latDeg = rawLat, lngDeg = rawLng;
+      if (Math.abs(rawLat) > 90 || Math.abs(rawLng) > 180) {
+        latDeg = rawLat * (180 / 2147483648);
+        lngDeg = rawLng * (180 / 2147483648);
+      }
+
+      if (latDeg < -90 || latDeg > 90 || lngDeg < -180 || lngDeg > 180) return null;
+
+      return { lat: latDeg, lng: lngDeg, timestamp: timestamp ? new Date(timestamp) : null };
+    }
+
+    // --- Main File Batch Processor ---
+    async function processFileList(fileList) {
+      const files = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.fit'));
+      if (files.length === 0) return;
+
+      const statusBar = document.getElementById('statusBar');
+      const statusText = document.getElementById('statusText');
+      const statusSpinner = document.getElementById('statusSpinner');
+      const statusCheck = document.getElementById('statusCheck');
+
+      // 1. Show immediate loading feedback
+      statusBar.style.display = 'flex';
+      statusSpinner.style.display = 'block';
+      statusCheck.style.display = 'none';
+      statusText.innerText = i18n[currentLang].statusInitialLoading;
+
+      // 2. Yield execution to UI thread to force browser paint
+      await new Promise(resolve => setTimeout(resolve, 30));
+
+      parsedResults = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        statusText.innerText = i18n[currentLang].statusProcessing
+          .replace('{progress}', i + 1)
+          .replace('{total}', files.length);
+
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          let pos = parseFitNative(arrayBuffer);
+
+          if (pos) {
+            parsedResults.push({
+              filename: file.name,
+              lat: pos.lat,
+              lng: pos.lng,
+              timestamp: pos.timestamp
+            });
+          }
+        } catch (err) {
+          console.error("Error processing file:", file.name, err);
+        }
+      }
+
+      // Calculate Clusters with Dynamic Centroid Arithmetic Mean and Tie-Breaker
+      topClusters = computeClusters(parsedResults, currentRadius);
+
+      // Hide spinner and show green checkmark when finished
+      statusSpinner.style.display = 'none';
+      statusCheck.style.display = 'flex';
+
+      const t = i18n[currentLang];
+      statusText.innerText = t.statusSuccess
+        .replace('{count}', files.length)
+        .replace('{gpsCount}', parsedResults.length);
+
+      document.getElementById('resultsSection').style.display = 'flex';
+
+      // Hide warning banner & dropzone to optimize UX and eliminate scrolling
+      document.querySelector('.warning-banner').style.display = 'none';
+      document.getElementById('dropzone').style.display = 'none';
+      document.getElementById('btnReloadFiles').style.display = 'inline-flex';
+
+      renderTable();
+      renderClustersList();
+      renderMap();
+    }
+
+    function resetDropzoneView() {
+      document.querySelector('.warning-banner').style.display = 'flex';
+      document.getElementById('dropzone').style.display = 'block';
+      document.getElementById('btnReloadFiles').style.display = 'none';
+    }
+
+    // --- Clustering Algorithm (Dynamic radius, mean centroid, date tie-breaker, Top 5) ---
+    function computeClusters(points, radiusMeters = 100) {
+      const clusters = [];
+
+      for (const pt of points) {
+        let minDistance = Infinity;
+        let targetCluster = null;
+
+        for (const cl of clusters) {
+          const dist = haversineDistance(cl.centerLat, cl.centerLng, pt.lat, pt.lng);
+          if (dist <= radiusMeters && dist < minDistance) {
+            minDistance = dist;
+            targetCluster = cl;
+          }
+        }
+
+        if (targetCluster) {
+          targetCluster.points.push(pt);
+          const sumLat = targetCluster.points.reduce((sum, p) => sum + p.lat, 0);
+          const sumLng = targetCluster.points.reduce((sum, p) => sum + p.lng, 0);
+          targetCluster.centerLat = sumLat / targetCluster.points.length;
+          targetCluster.centerLng = sumLng / targetCluster.points.length;
+        } else {
+          clusters.push({
+            centerLat: pt.lat,
+            centerLng: pt.lng,
+            points: [pt]
+          });
+        }
+      }
+
+      // Find latest timestamp for each cluster
+      clusters.forEach(cl => {
+        let maxTs = 0;
+        cl.points.forEach(p => {
+          if (p.timestamp) {
+            const t = p.timestamp.getTime();
+            if (t > maxTs) maxTs = t;
+          }
+        });
+        cl.latestTimestamp = maxTs > 0 ? new Date(maxTs) : null;
+      });
+
+      // Sort primary by occurrence count descending, secondary tie-breaker by latest timestamp descending
+      clusters.sort((a, b) => {
+        if (b.points.length !== a.points.length) {
+          return b.points.length - a.points.length;
+        }
+        const tA = a.latestTimestamp ? a.latestTimestamp.getTime() : 0;
+        const tB = b.latestTimestamp ? b.latestTimestamp.getTime() : 0;
+        return tB - tA;
+      });
+
+      return clusters.slice(0, 5); // Return Top 5 clusters!
+    }
+
+    // --- Data Table Rendering ---
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      const t = i18n[currentLang];
+
+      parsedResults.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        const dateStr = item.timestamp 
+          ? item.timestamp.toLocaleString(currentLang === 'cz' ? 'cs-CZ' : 'en-US')
+          : t.unknownTime;
+
+        const mapsUrl = `https://www.google.com/maps?q=${item.lat.toFixed(6)},${item.lng.toFixed(6)}`;
+
+        tr.innerHTML = `
+          <td><strong>${item.filename}</strong></td>
+          <td>${dateStr}</td>
+          <td><code>${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}</code></td>
+          <td>
+            <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="maps-link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              ${t.openInGoogleMaps}
+            </a>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- Render Top 5 Clusters Panel ---
+    function renderClustersList() {
+      const container = document.getElementById('clustersList');
+      container.innerHTML = '';
+      const t = i18n[currentLang];
+
+      if (topClusters.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted); font-size:0.9rem;">${t.noGpsFound}</div>`;
+        return;
+      }
+
+      const badges = ['badge-gold', 'badge-silver', 'badge-bronze', 'badge-rank4', 'badge-rank5'];
+      const rankClasses = ['rank-1', 'rank-2', 'rank-3', 'rank-4', 'rank-5'];
+      const ranks = ['1.', '2.', '3.', '4.', '5.'];
+
+      topClusters.forEach((cluster, idx) => {
+        const mapsUrl = `https://www.google.com/maps?q=${cluster.centerLat.toFixed(6)},${cluster.centerLng.toFixed(6)}`;
+
+        const card = document.createElement('div');
+        card.className = `cluster-item ${rankClasses[idx] || ''}`;
+        card.onclick = () => focusClusterOnMap(idx);
+
+        const countText = t.clusterRadiusText.replace('{radius}', currentRadius);
+        const lastDateStr = cluster.latestTimestamp
+          ? cluster.latestTimestamp.toLocaleDateString(currentLang === 'cz' ? 'cs-CZ' : 'en-US')
+          : t.unknownTime;
+        const lastStartedText = t.lastStartedOn.replace('{date}', lastDateStr);
+
+        card.innerHTML = `
+          <div class="cluster-top-row">
+            <span class="cluster-badge ${badges[idx]}">${ranks[idx]} ${t.topRank}</span>
+            <span class="cluster-count">${cluster.points.length}x ${countText}</span>
+          </div>
+          <div class="cluster-location-name" id="clusterLocation_${idx}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span>${t.loadingAddress}</span>
+          </div>
+          <div class="cluster-last-date">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span>${lastStartedText}</span>
+          </div>
+          <div class="cluster-coords">
+            GPS: ${cluster.centerLat.toFixed(6)}, ${cluster.centerLng.toFixed(6)}
+          </div>
+          <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="maps-link cluster-link" onclick="event.stopPropagation()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            ${t.openInGoogleMaps}
+          </a>
+        `;
+        container.appendChild(card);
+
+        // Fetch Reverse Geocoded Address Asynchronously
+        fetchReverseGeocode(cluster.centerLat, cluster.centerLng).then(locName => {
+          const locElem = document.getElementById(`clusterLocation_${idx}`);
+          if (locElem) {
+            locElem.querySelector('span').innerText = locName || t.unknownLocation;
+          }
+        });
+      });
+    }
+
+    // --- Interactive Map Rendering ---
+    function renderMap() {
+      const t = i18n[currentLang];
+
+      if (!map) {
+        map = L.map('map').setView([50.0755, 14.4378], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        mapMarkersLayer = L.layerGroup().addTo(map);
+      } else {
+        mapMarkersLayer.clearLayers();
+      }
+
+      if (parsedResults.length === 0) return;
+
+      const bounds = L.latLngBounds();
+
+      parsedResults.forEach(pt => {
+        bounds.extend([pt.lat, pt.lng]);
+        const circleMarker = L.circleMarker([pt.lat, pt.lng], {
+          radius: 5,
+          color: '#38bdf8',
+          fillColor: '#0284c7',
+          fillOpacity: 0.8,
+          weight: 1
+        });
+        
+        const dateStr = pt.timestamp ? pt.timestamp.toLocaleString() : t.unknownTime;
+        circleMarker.bindTooltip(t.pointTooltip.replace('{time}', dateStr).replace('{file}', pt.filename));
+        mapMarkersLayer.addLayer(circleMarker);
+      });
+
+      const clusterColors = ['#fbbf24', '#94a3b8', '#d97706', '#818cf8', '#c084fc'];
+      const markerClasses = ['marker-gold', 'marker-silver', 'marker-bronze', 'marker-rank4', 'marker-rank5'];
+      const tooltipTemplates = [t.top1Tooltip, t.top2Tooltip, t.top3Tooltip, t.top4Tooltip, t.top5Tooltip];
+
+      topClusters.forEach((cl, idx) => {
+        const color = clusterColors[idx] || '#38bdf8';
+        
+        const circle = L.circle([cl.centerLat, cl.centerLng], {
+          radius: currentRadius,
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.22,
+          weight: 2
+        });
+        mapMarkersLayer.addLayer(circle);
+
+        const customIcon = L.divIcon({
+          className: `custom-cluster-marker ${markerClasses[idx]}`,
+          html: `<span>${idx + 1}</span>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        });
+
+        const marker = L.marker([cl.centerLat, cl.centerLng], { icon: customIcon });
+        marker.bindTooltip(tooltipTemplates[idx].replace('{count}', cl.points.length), { permanent: true, direction: 'top' });
+        mapMarkersLayer.addLayer(marker);
+      });
+
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
+
+    function focusClusterOnMap(index) {
+      if (map && topClusters[index]) {
+        const cl = topClusters[index];
+        map.setView([cl.centerLat, cl.centerLng], 17, { animate: true });
+      }
+    }
+
+    // --- Excel Export 1: TOP 5 Locations Summary (for Authorities / Police) ---
+    async function exportTop5ToExcel() {
+      if (topClusters.length === 0) return;
+
+      const t = i18n[currentLang];
+      const exportData = [];
+
+      for (let i = 0; i < topClusters.length; i++) {
+        const cl = topClusters[i];
+        const locName = await fetchReverseGeocode(cl.centerLat, cl.centerLng) || t.unknownLocation;
+        const lastDateStr = cl.latestTimestamp
+          ? cl.latestTimestamp.toLocaleDateString(currentLang === 'cz' ? 'cs-CZ' : 'en-US')
+          : t.unknownTime;
+
+        const row = {};
+        row[t.colRank] = `${i + 1}. ${t.topRank}`;
+        row[t.colLocationName] = locName;
+        row[t.colStartCount] = cl.points.length;
+        row[t.colLastStarted] = lastDateStr;
+        row["Latitude"] = cl.centerLat.toFixed(6);
+        row["Longitude"] = cl.centerLng.toFixed(6);
+        row[t.colMapsLink] = `https://www.google.com/maps?q=${cl.centerLat.toFixed(6)},${cl.centerLng.toFixed(6)}`;
+        exportData.push(row);
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "TOP_5_Lokalit");
+
+      XLSX.writeFile(workbook, `Garmin_TOP5_Lokalit_PCR_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // --- Excel Export 2: All Individual Activity Starts ---
+    function exportAllToExcel() {
+      if (parsedResults.length === 0) return;
+
+      const t = i18n[currentLang];
+      const exportData = parsedResults.map(item => {
+        const row = {};
+        row[t.colFile] = item.filename;
+        row[t.colDate] = item.timestamp ? item.timestamp.toISOString() : t.unknownTime;
+        row['Latitude'] = item.lat.toFixed(6);
+        row['Longitude'] = item.lng.toFixed(6);
+        row[t.colLocation] = `https://www.google.com/maps?q=${item.lat.toFixed(6)},${item.lng.toFixed(6)}`;
+        return row;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Vsechny_Starty");
+
+      XLSX.writeFile(workbook, `Garmin_Vsechny_Starty_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+  </script>
+</body>
+</html>

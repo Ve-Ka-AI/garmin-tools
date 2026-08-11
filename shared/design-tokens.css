@@ -1,0 +1,127 @@
+/**
+ * Garmin Tools — Společné Design Tokeny
+ * ======================================
+ * Sdílené CSS proměnné, fonty a základní utility pro celý ekosystém.
+ * Každá aplikace si přidává vlastní barevné akcenty.
+ */
+
+/* Google Fonts: Inter & Outfit */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
+
+:root {
+  /* === Základní paleta === */
+  --bg-dark: #090d16;
+  --card-bg: rgba(21, 32, 54, 0.75);
+  --card-bg-hover: rgba(31, 41, 55, 0.85);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --card-border-glow: rgba(56, 189, 248, 0.3);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+
+  /* === Primární barvy === */
+  --primary: #38bdf8;
+  --primary-hover: #0284c7;
+  --primary-glow: rgba(56, 189, 248, 0.2);
+
+  /* === Akcentové barvy === */
+  --accent-green: #34d399;
+  --accent-purple: #c084fc;
+  --accent-amber: #fbbf24;
+  --accent-rose: #f43f5e;
+
+  /* === Rozměry === */
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* === Reset === */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* === Typografie === */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* === Utility třídy === */
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-glass);
+}
+
+.glass-card:hover {
+  border-color: var(--card-border-glow);
+}
+
+.privacy-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* === Animace === */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px var(--primary-glow); }
+  50% { box-shadow: 0 0 24px var(--primary-glow); }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+/* === Scrollbar === */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

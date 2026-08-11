@@ -1,0 +1,2709 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garmin FIT Repair Studio</title>
+  <meta name="description" content="Pokročilý klientský nástroj pro grafickou opravu a úpravu .FIT souborů Garmin (odstraňování GPS klubek a doplňování chybějících tras z DEM databází).">
+
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Sdílený FIT parser je importován jako ES modul ve script[type=module] -->
+
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --card-bg: rgba(17, 24, 39, 0.75);
+      --card-bg-hover: rgba(31, 41, 55, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-glow: rgba(56, 189, 248, 0.35);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --primary-glow: rgba(56, 189, 248, 0.2);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-rose: #f43f5e;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      background-image:
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(244, 63, 94, 0.1) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    h1, h2, h3, h4, .font-heading {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Top Bar Header */
+    header {
+      height: 64px;
+      padding: 0 1.5rem;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      flex-shrink: 0;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #38bdf8, #f43f5e);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      color: #fff;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 30%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .privacy-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Module Selector Tabs */
+    .module-tabs {
+      display: flex;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      gap: 4px;
+    }
+
+    .tab-btn {
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: #070a12;
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+      font-weight: 700;
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Header Actions */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--card-border);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #0284c7);
+      color: #070a12;
+      border: none;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #7dd3fc, var(--primary));
+      transform: translateY(-1px);
+    }
+
+    .btn-export {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      border: none;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-export:hover {
+      background: linear-gradient(135deg, #34d399, #10b981);
+      transform: translateY(-1px);
+    }
+
+    .lang-switcher {
+      display: flex;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 2px;
+    }
+
+    .lang-btn {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #070a12;
+    }
+
+    /* Main Workspace Layout */
+    .app-workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 64px);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Left Sidebar Panel */
+    .sidebar {
+      width: 410px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      padding: 1.1rem;
+      overflow-y: auto;
+      flex-shrink: 0;
+      z-index: 500;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .card-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-main);
+    }
+
+    /* Controls & Sliders */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .control-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #1e293b;
+      outline: none;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    /* Stats Overview Badge Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-val {
+      font-size: 1.05rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      color: #fff;
+    }
+
+    /* Batch Directory Scanned Activities Queue */
+    .batch-queue {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .batch-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .batch-item:hover {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: var(--primary);
+    }
+
+    .batch-item.active {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.18);
+    }
+
+    .batch-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .badge-flag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-tangle { background: rgba(244, 63, 94, 0.2); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+    .badge-gap { background: rgba(245, 158, 11, 0.2); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-clean { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    /* Items List (Tangles / Gaps) */
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .item-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .item-card:hover {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .item-card.active {
+      border-color: var(--accent-rose);
+      background: rgba(244, 63, 94, 0.1);
+    }
+
+    .item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .item-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .item-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Live Savings Tooltip Box */
+    .live-savings-box {
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.15), rgba(168, 85, 247, 0.15));
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: #fecdd3;
+    }
+
+    .live-savings-box i {
+      font-size: 1.2rem;
+      color: var(--accent-rose);
+    }
+
+    /* Dem Elevation Status Box */
+    .dem-status-box {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      color: #bae6fd;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Right Main Map & Chart Area */
+    .main-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Floating Map Toolbar (Před / Po) */
+    .map-toolbar-floating {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+    }
+
+    .map-view-switcher {
+      display: flex;
+      background: rgba(17, 24, 39, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border-glow);
+      border-radius: 12px;
+      padding: 4px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      gap: 4px;
+    }
+
+    .view-btn {
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .view-btn.active {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: #070a12;
+      font-weight: 700;
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.35);
+    }
+
+    #map {
+      flex: 1;
+      width: 100%;
+      background: #0b0f19;
+      z-index: 1;
+    }
+
+    /* Bottom Telemetry Chart Drawer */
+    .chart-drawer {
+      height: 230px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--card-border);
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .chart-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .chart-tab-btn {
+      padding: 3px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .chart-tab-btn.active {
+      background: var(--primary);
+      color: #070a12;
+      border-color: var(--primary);
+      font-weight: 700;
+    }
+
+    .chart-container {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Dropzone Empty Overlay */
+    .dropzone-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 10, 18, 0.88);
+      backdrop-filter: blur(12px);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      transition: opacity 0.3s ease;
+    }
+
+    .dropzone-box {
+      width: 520px;
+      padding: 3rem 2rem;
+      border: 2px dashed rgba(56, 189, 248, 0.4);
+      border-radius: 24px;
+      background: rgba(17, 24, 39, 0.7);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .dropzone-box.dragover {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.15);
+      transform: scale(1.02);
+    }
+
+    .dropzone-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(244, 63, 94, 0.2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      color: var(--primary);
+    }
+
+    /* Export Modal */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      z-index: 3000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 580px;
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid var(--card-border-glow);
+      border-radius: 20px;
+      padding: 1.75rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .notice-box {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 4px solid var(--primary);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: #e2e8f0;
+    }
+
+    .instruction-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .instruction-step {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--primary);
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.82rem;
+    }
+
+    .step-title {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Custom Leaflet Map Markers & Popups */
+    .leaflet-popup-content-wrapper {
+      background: rgba(17, 24, 39, 0.95) !important;
+      color: #fff !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      backdrop-filter: blur(10px);
+      border-radius: 12px !important;
+    }
+
+    .leaflet-popup-tip {
+      background: rgba(17, 24, 39, 0.95) !important;
+    }
+
+    .marker-badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      border: 2px solid #fff;
+    }
+
+    .marker-a { background: var(--accent-green); }
+    .marker-b { background: var(--accent-rose); }
+    .marker-gap { background: var(--accent-amber); }
+
+    /* Hidden input */
+    #fileInput { display: none; }
+    #folderInput { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar Header -->
+  <header>
+    <div class="brand-section">
+      <a href="../../index.html" style="text-decoration:none; display:flex; align-items:center; gap:0.5rem; color:var(--text-muted); font-size:0.82rem; font-weight:600; padding:4px 10px; border-radius:8px; border:1px solid var(--card-border); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--card-border)'; this.style.color='var(--text-muted)'">← Hub</a>
+      <div class="brand-icon"><i class="fa-solid fa-scissors"></i></div>
+      <div>
+        <div class="brand-title">Garmin FIT Repair Studio</div>
+        <div class="privacy-badge"><i class="fa-solid fa-shield-halved"></i> <span data-i18n="privacyNotice">100% Client-Side / Zero Upload</span></div>
+      </div>
+    </div>
+
+    <!-- Module Selector Tabs -->
+    <div class="module-tabs">
+      <button type="button" class="tab-btn active" id="tabModule1" onclick="switchModule(1)">
+        <i class="fa-solid fa-scissors"></i> <span data-i18n="mod1Title">Odstraňovač klubka</span>
+      </button>
+      <button type="button" class="tab-btn" id="tabModule2" onclick="switchModule(2)">
+        <i class="fa-solid fa-pen-ruler"></i> <span data-i18n="mod2Title">Doplňovač trasy</span>
+      </button>
+    </div>
+
+    <!-- Header Actions & Language Switcher -->
+    <div class="header-actions">
+      <button type="button" class="btn" onclick="openFolderSelector()" title="Proskenovat celou složku se soubory FIT">
+        <i class="fa-solid fa-folder-tree"></i> <span data-i18n="btnLoadFolder">Načíst složku</span>
+      </button>
+      <button type="button" class="btn" onclick="openFileSelector()">
+        <i class="fa-solid fa-folder-open"></i> <span data-i18n="btnLoadFit">Načíst FIT</span>
+      </button>
+      <button type="button" class="btn" onclick="loadDemoFile()">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="btnDemo">Demo</span>
+      </button>
+      <button type="button" class="btn btn-export" id="btnExportHeader" onclick="showExportModal()" disabled>
+        <i class="fa-solid fa-file-export"></i> <span data-i18n="btnExport">Exportovat FIT</span>
+      </button>
+
+      <div class="lang-switcher">
+        <button type="button" class="lang-btn active" id="langCS" onclick="setLanguage('cs')">CZ</button>
+        <button type="button" class="lang-btn" id="langEN" onclick="setLanguage('en')">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Workspace Container -->
+  <div class="app-workspace">
+    
+    <!-- Left Controls Sidebar -->
+    <aside class="sidebar">
+
+      <!-- Batch Directory Scanned Activities Card -->
+      <div class="card" id="cardBatchQueue" style="display:none;">
+        <div class="card-title">
+          <span><i class="fa-solid fa-folder-tree" style="color:var(--primary);"></i> <span data-i18n="batchTitle">Proskenovaná složka</span> (<span id="batchCount">0</span>)</span>
+          <span style="font-size:0.72rem; color:var(--text-muted);" id="batchSubTitle">Vyberte soubor k opravě</span>
+        </div>
+        <div class="batch-queue" id="batchQueueList">
+          <!-- Populated dynamically when scanning folder -->
+        </div>
+      </div>
+      
+      <!-- Activity Summary Header Card -->
+      <div class="card">
+        <div class="card-title" style="flex-direction:column; align-items:flex-start; gap:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+            <span id="actName" data-i18n="noFileLoaded" style="font-weight:800; font-size:0.95rem;">Žádná aktivita načtena</span>
+            <span id="actDate" style="font-size:0.75rem; color:var(--text-muted);">--.--.----</span>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:2px;">
+            <div id="actSportBadge" class="badge-flag badge-clean" style="display:none; font-size:0.75rem; font-weight:700;">
+              🏃 Běh
+            </div>
+            <div id="actRecModeBadge" class="badge-flag" style="display:none; font-size:0.75rem; font-weight:700; background:rgba(168,85,247,0.18); color:var(--accent-purple); border:1px solid rgba(168,85,247,0.3);">
+              ⏱️ Záznam: Po vteřině
+            </div>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label" data-i18n="statDistance">Vzdálenost</span>
+            <span class="stat-val" id="statDistance">0.0 km</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label" data-i18n="statTime">Čas v pohybu</span>
+            <span class="stat-val" id="statTime">00:00:00</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label" data-i18n="statAvgSpeed">Prům. Rychlost</span>
+            <span class="stat-val" id="statAvgSpeed">0.0 km/h</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label" data-i18n="statAvgHr">Prům. Tep</span>
+            <span class="stat-val" id="statAvgHr">-- bpm</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODULE 1 CONTROLS: GPS DRIFT CLEANER -->
+      <div id="panelModule1" class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-sliders" style="color:var(--primary);"></i> <span data-i18n="tangleSensitivity">Citlivost detekce klubka</span></span>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span data-i18n="lblRadius">Poloměr stání</span>
+            <span id="valRadius">30 m</span>
+          </div>
+          <input type="range" class="slider" id="inputRadius" min="10" max="50" value="30" oninput="updateDetectionSettings()">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span data-i18n="lblMinTime">Minimální čas stání</span>
+            <span id="valMinTime">3 min</span>
+          </div>
+          <input type="range" class="slider" id="inputMinTime" min="1" max="10" value="3" oninput="updateDetectionSettings()">
+        </div>
+
+        <!-- Live Savings Indicator Box -->
+        <div class="live-savings-box">
+          <i class="fa-solid fa-scissors"></i>
+          <div>
+            <div style="font-weight:700;" data-i18n="liveSavingsTitle">Živý odhad úspory</div>
+            <div id="liveSavingsText" style="font-size:0.8rem;">Vyříznuto: 0 min a 0 m</div>
+          </div>
+        </div>
+
+        <!-- Detected Tangles List -->
+        <div class="card-title" style="margin-top:4px;">
+          <span><i class="fa-solid fa-bullseye" style="color:var(--accent-rose);"></i> <span data-i18n="foundTangles">Nalezená klubka</span> (<span id="tangleCount">0</span>)</span>
+        </div>
+        <div class="item-list" id="tanglesList">
+          <!-- Populated by JS -->
+          <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;" data-i18n="loadFitFirst">
+            Načtěte .FIT soubor nebo složku pro detekci klubek.
+          </div>
+        </div>
+      </div>
+
+      <!-- MODULE 2 CONTROLS: MISSING ROUTE INTERPOLATOR -->
+      <div id="panelModule2" class="card" style="display:none;">
+        <div class="card-title">
+          <span><i class="fa-solid fa-pen-ruler" style="color:var(--accent-amber);"></i> <span data-i18n="mod2Title">Doplňovač trasy</span></span>
+        </div>
+
+        <p style="font-size:0.8rem; color:var(--text-muted); line-height:1.4;" data-i18n="mod2Desc">
+          Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a načíst reálnou nadmořskou výšku z DEM databáze kalibrovanou na barometr.
+        </p>
+
+        <div class="control-group" style="margin-bottom:12px;">
+          <div class="control-header">
+            <span class="control-label" data-i18n="minGapDistLabel">Minimální délka chybějící mezery</span>
+            <span class="control-val" id="valMinGapDist">25 m</span>
+          </div>
+          <input type="range" class="slider" id="inputMinGapDist" min="3" max="100" value="25" oninput="document.getElementById('valMinGapDist').innerText = this.value + ' m'; runGapDetection();">
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-primary" id="btnToggleDrawing" onclick="toggleDrawingTool()" style="flex:1; justify-content:center;">
+            <i class="fa-solid fa-pencil"></i> <span id="lblDrawingBtn" data-i18n="startDrawing">Zapnout kreslení</span>
+          </button>
+          <button type="button" class="btn" id="btnUndoDrawing" onclick="undoLastDrawnWaypoint()" style="display:none; justify-content:center; background:rgba(244,63,94,0.18); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.3);" title="Vrátit poslední nakreslený bod">
+            <i class="fa-solid fa-rotate-left"></i> <span>Zpět</span>
+          </button>
+        </div>
+
+        <div class="dem-status-box" id="demStatusBox" style="display:none;">
+          <i class="fa-solid fa-mountain" style="color:var(--primary);"></i>
+          <span id="demStatusText">DEM databáze nadmořské výšky s kalibrací na barometr připravena.</span>
+        </div>
+
+        <div class="card-title" style="margin-top:4px;">
+          <span><i class="fa-solid fa-vector-square" style="color:var(--accent-amber);"></i> <span data-i18n="detectedGaps">Detekované mezery</span> (<span id="gapCount">0</span>)</span>
+        </div>
+        <div class="item-list" id="gapsList">
+          <!-- Populated by JS -->
+          <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;" data-i18n="noGapsFound">
+            Žádné přímkové mezery nedetekovány.
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Center/Right View: Leaflet Map & Elevation Chart -->
+    <main class="main-view">
+
+      <!-- Floating Map View Mode & Basemap Switcher -->
+      <div class="map-toolbar-floating">
+        <div class="map-view-switcher">
+          <button type="button" class="view-btn active" id="btnViewBefore" onclick="setMapViewMode('before')">
+            <i class="fa-solid fa-eye"></i> <span data-i18n="viewBefore">Před (Původní)</span>
+          </button>
+          <button type="button" class="view-btn" id="btnViewAfter" onclick="setMapViewMode('after')">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="viewAfter">Po (Náhled opravy)</span>
+          </button>
+        </div>
+
+        <div class="map-view-switcher">
+          <button type="button" class="view-btn" id="btnBaseDark" onclick="setBasemap('dark')" title="Tmavá mapa">
+            <i class="fa-solid fa-moon"></i> <span>Tmavá</span>
+          </button>
+          <button type="button" class="view-btn" id="btnBaseTopo" onclick="setBasemap('topo')" title="Turistická a cyklistická mapa se stezkami">
+            <i class="fa-solid fa-map-location-dot"></i> <span>Turistická 🥾</span>
+          </button>
+          <button type="button" class="view-btn active" id="btnBaseOsm" onclick="setBasemap('osm')" title="Standardní mapa">
+            <i class="fa-solid fa-globe"></i> <span>Standard</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="map"></div>
+
+      <!-- Bottom Synchronized Telemetry Chart Drawer -->
+      <div class="chart-drawer">
+        <div class="chart-header">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span><i class="fa-solid fa-chart-area" style="color:var(--primary);"></i> <span data-i18n="chartTitle">Telemetrie a grafy</span></span>
+            <div class="chart-tabs">
+              <button type="button" class="chart-tab-btn active" id="cTabAlt" onclick="switchChartMode('alt')">⛰️ Výška</button>
+              <button type="button" class="chart-tab-btn" id="cTabHr" onclick="switchChartMode('hr')">💓 Tep</button>
+              <button type="button" class="chart-tab-btn" id="cTabSpeed" onclick="switchChartMode('speed')">⚡ Rychlost</button>
+              <button type="button" class="chart-tab-btn" id="cTabCad" onclick="switchChartMode('cad')">🚴 Kadence</button>
+            </div>
+          </div>
+          <span id="chartCursorInfo">-- m | -- km/h | -- bpm</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="elevationChart"></canvas>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Dropzone Empty State Overlay -->
+  <div class="dropzone-overlay" id="dropzoneOverlay">
+    <div class="dropzone-box" id="dropzoneBox">
+      <div class="dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+      <div>
+        <h2 style="font-size:1.4rem; font-weight:800; color:#fff;" data-i18n="dropTitle">Přetáhněte sem Garmin .FIT soubor nebo složku</h2>
+        <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;" data-i18n="dropSubtitle">Aplikace proskenuje všechny aktivity, odhalí klubka i zapomenuté restarty a opraví je přímo v prohlížeči.</p>
+      </div>
+      <div style="display:flex; gap:12px; margin-top:8px;">
+        <button type="button" class="btn btn-primary" onclick="openFolderSelector()">
+          <i class="fa-solid fa-folder-tree"></i> <span data-i18n="btnLoadFolder">Načíst složku .FIT</span>
+        </button>
+        <button type="button" class="btn" onclick="openFileSelector()">
+          <i class="fa-solid fa-folder-open"></i> <span data-i18n="btnSelectFile">Vybrat FIT soubor</span>
+        </button>
+        <button type="button" class="btn" onclick="loadDemoFile()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="btnDemo">Načíst Demo</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-backdrop" id="exportModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-file-export" style="color:var(--accent-green);"></i> <span data-i18n="exportModalTitle">Export opraveného FIT souboru</span></div>
+        <button type="button" class="modal-close" onclick="closeExportModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="notice-box">
+        <i class="fa-solid fa-circle-check" style="color:var(--accent-green); margin-right:6px;"></i>
+        <strong data-i18n="dupBypassNoticeTitle">Bypass duplicity aktivní:</strong>
+        <span data-i18n="dupBypassNoticeDesc">Hodnota time_created v hlavičce souboru byla posunuta o +1 sekundu. Garmin Connect přijme tento soubor bez chybové hlášky o duplicité!</span>
+      </div>
+
+      <div class="instruction-list">
+        <div class="instruction-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title" data-i18n="step1Title">Doporučený postup</div>
+            <div style="color:var(--text-muted);" data-i18n="step1Desc">V Garmin Connect nejprve smažte původní pokaženou aktivitu a poté nahrajte tento nový opravený .fit soubor.</div>
+          </div>
+        </div>
+
+        <div class="instruction-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title" data-i18n="step2Title">Alternativní postup</div>
+            <div style="color:var(--text-muted);" data-i18n="step2Desc">Nahrajte opravený soubor bez mazání původního — v účtu se objeví jako druhá samostatná aktivita pro srovnání.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px;">
+        <button type="button" class="btn" onclick="downloadGpxFile()">
+          <i class="fa-solid fa-route"></i> <span data-i18n="btnDownloadGpx">Stáhnout GPX</span>
+        </button>
+        <button type="button" class="btn btn-export" onclick="downloadFitFile()">
+          <i class="fa-solid fa-download"></i> <span data-i18n="btnDownloadFit">Stáhnout opravený .FIT</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept=".fit" onchange="handleFileSelect(event)">
+  <input type="file" id="folderInput" webkitdirectory directory multiple onchange="handleFolderSelect(event)">
+
+  <!-- JavaScript Code Base -->
+  <script type="module">
+    // --- Import sdíleného FIT parseru a utilit ---
+    import { parseFitBinary, calcHaversine as _calcHaversine, calcFitCrc as _calcFitCrc, garminTimestampToDate, dateToGarminTimestamp, GARMIN_EPOCH_OFFSET } from '../../shared/fit-core.js';
+
+    // --- i18n Translation Dictionary ---
+    const i18nData = {
+      cs: {
+        privacyNotice: "100% Klientské / Zero Upload",
+        mod1Title: "Odstraňovač klubka",
+        mod2Title: "Doplňovač trasy",
+        btnLoadFit: "Načíst FIT",
+        btnLoadFolder: "Načíst složku",
+        btnDemo: "Demo",
+        btnExport: "Exportovat FIT",
+        noFileLoaded: "Žádná aktivita načtena",
+        statDistance: "Vzdálenost",
+        statTime: "Čas v pohybu",
+        statAvgSpeed: "Prům. Rychlost",
+        statAvgHr: "Prům. Tep",
+        batchTitle: "Proskenovaná složka",
+        tangleSensitivity: "Citlivost detekce klubka",
+        lblRadius: "Poloměr stání",
+        lblMinTime: "Minimální čas stání",
+        liveSavingsTitle: "Živý odhad úspory",
+        foundTangles: "Nalezená klubka",
+        loadFitFirst: "Načtěte .FIT soubor pro detekci klubek.",
+        mod2Desc: "Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a načíst reálnou nadmořskou výšku z DEM databáze kalibrovanou na barometr.",
+        startDrawing: "Zapnout kreslicí nástroj",
+        stopDrawing: "Ukončit kreslení",
+        detectedGaps: "Detekované mezery",
+        noGapsFound: "Žádné přímkové mezery nedetekovány.",
+        chartTitle: "Telemetrie a grafy",
+        dropTitle: "Přetáhněte sem Garmin .FIT soubor nebo složku",
+        dropSubtitle: "Aplikace proskenuje všechny aktivity, odhalí klubka i zapomenuté restarty a opraví je přímo v prohlížeči.",
+        btnSelectFile: "Vybrat FIT soubor",
+        exportModalTitle: "Export opraveného FIT souboru",
+        dupBypassNoticeTitle: "Bypass duplicity aktivní:",
+        dupBypassNoticeDesc: "Hodnota time_created v hlavičce souboru byla posunuta o +1 sekundu. Garmin Connect přijme tento soubor bez chybové hlášky o duplicité!",
+        step1Title: "Doporučený postup",
+        step1Desc: "V Garmin Connect nejprve smažte původní pokaženou aktivitu a poté nahrajte tento nový opravený .fit soubor.",
+        step2Title: "Alternativní postup",
+        step2Desc: "Nahrajte opravený soubor bez mazání původního — v účtu se objeví jako druhá samostatná aktivita pro srovnání.",
+        btnDownloadGpx: "Stáhnout GPX",
+        btnDownloadFit: "Stáhnout opravený .FIT",
+        viewBefore: "Před (Původní)",
+        viewAfter: "Po (Náhled opravy)"
+      },
+      en: {
+        privacyNotice: "100% Client-Side / Zero Upload",
+        mod1Title: "GPS Drift Cleaner",
+        mod2Title: "Missing Route Interpolator",
+        btnLoadFit: "Load FIT",
+        btnLoadFolder: "Load Folder",
+        btnDemo: "Demo",
+        btnExport: "Export FIT",
+        noFileLoaded: "No activity loaded",
+        statDistance: "Distance",
+        statTime: "Moving Time",
+        statAvgSpeed: "Avg Speed",
+        statAvgHr: "Avg HR",
+        batchTitle: "Scanned Directory",
+        tangleSensitivity: "Tangle Detection Sensitivity",
+        lblRadius: "Stationary Radius",
+        lblMinTime: "Min Stationary Time",
+        liveSavingsTitle: "Live Estimated Savings",
+        foundTangles: "Detected Tangles",
+        loadFitFirst: "Load a .FIT file to detect tangles.",
+        mod2Desc: "The app automatically flags unnatural straight lines. Click on the map to manually draw missing routes and fetch real DEM terrain elevation calibrated to your barometric altimeter.",
+        startDrawing: "Enable Drawing Tool",
+        stopDrawing: "Finish Drawing",
+        detectedGaps: "Detected Gaps",
+        noGapsFound: "No straight line gaps detected.",
+        chartTitle: "Telemetry & Charts",
+        dropTitle: "Drag & Drop Garmin .FIT file or folder here",
+        dropSubtitle: "The app scans all activities, flags drift tangles or forgotten unpauses, and repairs telemetry directly inside your browser.",
+        btnSelectFile: "Select FIT File",
+        exportModalTitle: "Export Repaired FIT File",
+        dupBypassNoticeTitle: "Duplicity Bypass Active:",
+        dupBypassNoticeDesc: "Header time_created value shifted by +1 second. Garmin Connect will accept this file without throwing a duplicate error!",
+        step1Title: "Recommended Method",
+        step1Desc: "Delete original broken activity in Garmin Connect first, then upload this new repaired .fit file.",
+        step2Title: "Alternative Method",
+        step2Desc: "Upload repaired file directly without deleting original — it will appear as a 2nd activity for comparison.",
+        btnDownloadGpx: "Download GPX",
+        btnDownloadFit: "Download Repaired .FIT",
+        viewBefore: "Before (Original)",
+        viewAfter: "After (Repaired)"
+      }
+    };
+
+    let currentLang = 'cs';
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.getElementById('langCS').classList.toggle('active', lang === 'cs');
+      document.getElementById('langEN').classList.toggle('active', lang === 'en');
+      
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18nData[lang][key]) {
+          el.innerText = i18nData[lang][key];
+        }
+      });
+      updateTangleListUI();
+      updateLiveSavingsUI();
+    }
+
+    // --- State Variables ---
+    let activeModule = 1; // 1 = Drift Cleaner, 2 = Missing Route Interpolator
+    let fitArrayBuffer = null;
+    let records = []; // parsed trackpoint records [{timestamp, lat, lng, alt, hr, cadence, speed, dist, ...}]
+    let fileIdHeader = {};
+
+    let scannedBatchFiles = []; // [{filename, buffer, records, tanglesCount, gapsCount}]
+    let activeBatchIndex = -1;
+
+    let detectedTangles = []; // [{id, startIdx, endIdx, active, markerA, markerB, circlePoly, tangledPolyline, bridgePolyline}]
+    let detectedGaps = []; // [{id, startIdx, endIdx, drawnWaypoints:[]}]
+
+    let map = null;
+    let trackPolyline = null;
+    let mapCursorMarker = null;
+    let chart = null;
+    let currentChartMode = 'alt'; // 'alt', 'hr', 'speed', 'cad'
+    let currentMapViewMode = 'before'; // 'before' (Original + Cut Proposal) or 'after' (Repaired Preview)
+    let isDrawingMode = false;
+    let drawingPolyline = null;
+    let drawnRouteNodes = [];
+
+    // GARMIN_EPOCH_OFFSET importován ze shared/fit-core.js
+
+    // Initialize Leaflet Map and UI on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      initChart();
+      setupDragAndDrop();
+    });
+
+    let darkTileLayer, topoTileLayer, osmTileLayer, currentBasemap = 'osm';
+
+    function initMap() {
+      map = L.map('map', { zoomControl: true }).setView([49.8, 15.5], 8);
+
+      darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19
+      });
+
+      topoTileLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CyclOSM',
+        maxZoom: 18
+      });
+
+      osmTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      });
+
+      osmTileLayer.addTo(map);
+    }
+
+    function setBasemap(type) {
+      if (currentBasemap === type) return;
+      currentBasemap = type;
+
+      map.removeLayer(darkTileLayer);
+      map.removeLayer(topoTileLayer);
+      map.removeLayer(osmTileLayer);
+
+      document.getElementById('btnBaseDark').classList.remove('active');
+      document.getElementById('btnBaseTopo').classList.remove('active');
+      document.getElementById('btnBaseOsm').classList.remove('active');
+
+      if (type === 'dark') {
+        darkTileLayer.addTo(map);
+        document.getElementById('btnBaseDark').classList.add('active');
+      } else if (type === 'topo') {
+        topoTileLayer.addTo(map);
+        document.getElementById('btnBaseTopo').classList.add('active');
+      } else if (type === 'osm') {
+        osmTileLayer.addTo(map);
+        document.getElementById('btnBaseOsm').classList.add('active');
+      }
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('elevationChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Výška (m)',
+              data: [],
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              fill: true,
+              tension: 0.2,
+              pointRadius: 0,
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', maxTicksLimit: 10 } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#38bdf8' } }
+          },
+          onHover: (e, activeElements) => {
+            if (activeElements && activeElements.length > 0) {
+              const idx = activeElements[0].index;
+              highlightMapCursor(idx);
+            }
+          }
+        }
+      });
+    }
+
+    function switchChartMode(mode) {
+      currentChartMode = mode;
+      document.getElementById('cTabAlt').classList.toggle('active', mode === 'alt');
+      document.getElementById('cTabHr').classList.toggle('active', mode === 'hr');
+      document.getElementById('cTabSpeed').classList.toggle('active', mode === 'speed');
+      document.getElementById('cTabCad').classList.toggle('active', mode === 'cad');
+      renderChartData();
+    }
+
+    function setMapViewMode(mode) {
+      currentMapViewMode = mode;
+      document.getElementById('btnViewBefore').classList.toggle('active', mode === 'before');
+      document.getElementById('btnViewAfter').classList.toggle('active', mode === 'after');
+      renderMapTrack();
+      renderTanglesOnMap();
+    }
+
+    // --- Module Switcher ---
+    function switchModule(modNum) {
+      activeModule = modNum;
+      document.getElementById('tabModule1').classList.toggle('active', modNum === 1);
+      document.getElementById('tabModule2').classList.toggle('active', modNum === 2);
+      document.getElementById('panelModule1').style.display = modNum === 1 ? 'flex' : 'none';
+      document.getElementById('panelModule2').style.display = modNum === 2 ? 'flex' : 'none';
+      if (modNum !== 2 && isDrawingMode) {
+        toggleDrawingTool();
+      }
+    }
+
+    // --- Directory Batch Scanning & File Select ---
+    function openFileSelector() {
+      document.getElementById('fileInput').click();
+    }
+
+    function openFolderSelector() {
+      if ('showDirectoryPicker' in window) {
+        window.showDirectoryPicker().then(async dirHandle => {
+          scannedBatchFiles = [];
+          await scanDirectoryHandleRecursive(dirHandle);
+          finishBatchScan();
+        }).catch(err => {
+          if (err.name !== 'AbortError') document.getElementById('folderInput').click();
+        });
+      } else {
+        document.getElementById('folderInput').click();
+      }
+    }
+
+    async function scanDirectoryHandleRecursive(dirHandle) {
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.fit')) {
+          try {
+            const file = await entry.getFile();
+            const buf = await file.arrayBuffer();
+            parseBatchFileEntry(buf, file.name);
+          } catch (e) {
+            console.warn('File read error:', entry.name, e);
+          }
+        } else if (entry.kind === 'directory') {
+          await scanDirectoryHandleRecursive(entry);
+        }
+      }
+    }
+
+    function handleFolderSelect(evt) {
+      const files = evt.target.files;
+      if (!files || files.length === 0) return;
+      scannedBatchFiles = [];
+
+      const fitFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.fit'));
+      if (fitFiles.length === 0) {
+        alert('Ve složce nebyly nalezeny žádné soubory s příponou .FIT');
+        return;
+      }
+
+      let loadedCount = 0;
+      fitFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          parseBatchFileEntry(e.target.result, file.name);
+          loadedCount++;
+          if (loadedCount === fitFiles.length) {
+            finishBatchScan();
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function handleFileSelect(evt) {
+      const file = evt.target.files[0];
+      if (file) loadFitFileBuffer(file);
+    }
+
+    function parseBatchFileEntry(buffer, filename) {
+      const parsed = parseNativeFitBinary(buffer);
+      if (parsed && parsed.records && parsed.records.length > 0) {
+        const tCount = quickDetectTanglesCount(parsed.records);
+        const gCount = quickDetectGapsCount(parsed.records);
+
+        scannedBatchFiles.push({
+          filename: filename,
+          buffer: buffer,
+          records: parsed.records,
+          fileIdHeader: parsed.fileIdHeader,
+          tanglesCount: tCount,
+          gapsCount: gCount
+        });
+      }
+    }
+
+    function finishBatchScan() {
+      if (scannedBatchFiles.length === 0) {
+        alert('Ve složce nebyly nalezeny žádné platné soubory .FIT');
+        return;
+      }
+
+      scannedBatchFiles.sort((a, b) => (b.tanglesCount + b.gapsCount) - (a.tanglesCount + a.gapsCount));
+
+      document.getElementById('cardBatchQueue').style.display = 'flex';
+      document.getElementById('batchCount').innerText = scannedBatchFiles.length;
+
+      const container = document.getElementById('batchQueueList');
+      container.innerHTML = '';
+
+      scannedBatchFiles.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = `batch-item ${idx === 0 ? 'active' : ''}`;
+        
+        let badgeHtml = '';
+        if (item.tanglesCount > 0) {
+          badgeHtml += `<span class="badge-flag badge-tangle"><i class="fa-solid fa-scissors"></i> ${item.tanglesCount}</span> `;
+        }
+        if (item.gapsCount > 0) {
+          badgeHtml += `<span class="badge-flag badge-gap"><i class="fa-solid fa-vector-square"></i> ${item.gapsCount}</span>`;
+        }
+        if (item.tanglesCount === 0 && item.gapsCount === 0) {
+          badgeHtml = `<span class="badge-flag badge-clean"><i class="fa-solid fa-check"></i> Bez chyby</span>`;
+        }
+
+        div.innerHTML = `
+          <div class="batch-name" title="${item.filename}">${item.filename}</div>
+          <div>${badgeHtml}</div>
+        `;
+        div.onclick = () => loadBatchActivity(idx);
+        container.appendChild(div);
+      });
+
+      loadBatchActivity(0);
+    }
+
+    function loadBatchActivity(idx) {
+      activeBatchIndex = idx;
+      const item = scannedBatchFiles[idx];
+      if (!item) return;
+
+      document.querySelectorAll('.batch-item').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+      });
+
+      fitArrayBuffer = item.buffer;
+      records = item.records;
+      fileIdHeader = item.fileIdHeader;
+
+      document.getElementById('dropzoneOverlay').style.opacity = '0';
+      setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+      document.getElementById('btnExportHeader').disabled = false;
+
+      document.getElementById('actName').innerText = item.filename;
+      if (records[0].timestamp) {
+        const dt = new Date((records[0].timestamp + GARMIN_EPOCH_OFFSET) * 1000);
+        document.getElementById('actDate').innerText = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      }
+
+      processActivityData();
+    }
+
+    function setupDragAndDrop() {
+      const dropzone = document.getElementById('dropzoneOverlay');
+      const box = document.getElementById('dropzoneBox');
+
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        box.classList.add('dragover');
+      });
+
+      window.addEventListener('dragleave', (e) => {
+        if (e.target === dropzone) box.classList.remove('dragover');
+      });
+
+      window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        box.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const files = e.dataTransfer.files;
+          if (files.length === 1 && files[0].name.toLowerCase().endsWith('.fit')) {
+            loadFitFileBuffer(files[0]);
+          } else {
+            handleFolderSelect({ target: { files: files } });
+          }
+        }
+      });
+    }
+
+    function loadFitFileBuffer(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        fitArrayBuffer = e.target.result;
+        const parsed = parseNativeFitBinary(fitArrayBuffer);
+        if (parsed && parsed.records) {
+          records = parsed.records;
+          fileIdHeader = parsed.fileIdHeader;
+          document.getElementById('dropzoneOverlay').style.opacity = '0';
+          setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+          document.getElementById('btnExportHeader').disabled = false;
+          document.getElementById('actName').innerText = file.name;
+          processActivityData();
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function loadDemoFile() {
+      generateDemoFitTrack();
+    }
+
+    // --- NATIVE BINARY FIT PARSER ENGINE ---
+    // --- FIT Parser Wrapper — deleguje na sdílený modul shared/fit-core.js ---
+    function parseNativeFitBinary(buffer) {
+      try {
+        const result = parseFitBinary(buffer, { mode: 'full' });
+        if (!result || !result.records || result.records.length === 0) return null;
+
+        // Repair Studio pracuje s raw garmin timestamps (bez konverze na Date)
+        const recs = result.records.filter(r =>
+          r.lat !== undefined && r.lng !== undefined &&
+          Math.abs(r.lat) <= 89.0 && Math.abs(r.lng) <= 180.0 &&
+          r.lat !== 0 && r.lng !== 0
+        );
+
+        const fHeader = {
+          timeCreated: result.fileId.timeCreated || (Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET),
+          sport: result.sessionData && result.sessionData[0] !== undefined ? result.sessionData[0] : undefined
+        };
+
+        return { records: recs, fileIdHeader: fHeader };
+      } catch (e) {
+        console.error('Fit Parse error:', e);
+        return null;
+      }
+    }
+
+    // --- Synthetic Demo Generator ---
+    function generateDemoFitTrack() {
+      records = [];
+      const baseLat = 49.8500, baseLng = 18.2500;
+      let curTime = Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET;
+      let curDist = 0;
+
+      for (let i = 0; i < 100; i++) {
+        curTime += 2;
+        curDist += 5.5;
+        records.push({
+          timestamp: curTime,
+          lat: baseLat + i * 0.00015,
+          lng: baseLng + i * 0.0002,
+          alt: 250 + Math.sin(i / 10) * 15,
+          hr: 140 + Math.floor(Math.random() * 10),
+          cadence: 85 + Math.floor(Math.random() * 6),
+          speed: 10.0,
+          dist: curDist
+        });
+      }
+
+      const tangleStartIdx = records.length - 1;
+      const tCenterLat = records[tangleStartIdx].lat;
+      const tCenterLng = records[tangleStartIdx].lng;
+
+      for (let i = 0; i < 150; i++) {
+        curTime += 2;
+        curDist += 0.8;
+        const angle = Math.random() * Math.PI * 2;
+        const rad = Math.random() * 0.00018;
+        records.push({
+          timestamp: curTime,
+          lat: tCenterLat + Math.cos(angle) * rad,
+          lng: tCenterLng + Math.sin(angle) * rad,
+          alt: 252,
+          hr: 95,
+          cadence: 0,
+          speed: 0.5,
+          dist: curDist
+        });
+      }
+
+      const lastRec = records[records.length - 1];
+      for (let i = 0; i < 80; i++) {
+        curTime += 2;
+        curDist += 6.0;
+        records.push({
+          timestamp: curTime,
+          lat: lastRec.lat + i * 0.00015,
+          lng: lastRec.lng + i * 0.0002,
+          alt: 252 + i * 0.5,
+          hr: 148,
+          cadence: 88,
+          speed: 10.8,
+          dist: curDist
+        });
+      }
+
+      const gapStartRec = records[records.length - 1];
+      curTime += 180;
+      curDist += 800;
+      records.push({
+        timestamp: curTime,
+        lat: gapStartRec.lat + 0.005,
+        lng: gapStartRec.lng + 0.006,
+        alt: 290,
+        hr: 152,
+        cadence: 90,
+        speed: 16.0,
+        dist: curDist
+      });
+
+      document.getElementById('dropzoneOverlay').style.opacity = '0';
+      setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+      document.getElementById('btnExportHeader').disabled = false;
+
+      document.getElementById('actName').innerText = 'Garmin Demo Aktivita (Klubko + Mezera)';
+      document.getElementById('actDate').innerText = new Date().toLocaleDateString();
+
+      processActivityData();
+    }
+
+    // --- Main Activity Data Processing & Render ---
+    function processActivityData() {
+      if (records.length === 0) return;
+
+      renderMapTrack();
+      if (records.length > 0 && trackPolyline) {
+        map.fitBounds(trackPolyline.getBounds(), { padding: [40, 40] });
+      }
+      renderChartData();
+
+      runTangleDetection();
+      runGapDetection();
+
+      updateActivityStatsUI();
+    }
+
+    function setMapViewMode(mode) {
+      if (currentMapViewMode === mode) return;
+      currentMapViewMode = mode;
+
+      document.getElementById('btnViewBefore').classList.toggle('active', mode === 'before');
+      document.getElementById('btnViewAfter').classList.toggle('active', mode === 'after');
+
+      // Save exact map center and zoom level so view never jumps or resets!
+      const currentCenter = map.getCenter();
+      const currentZoom = map.getZoom();
+
+      renderMapTrack();
+      renderTanglesOnMap();
+
+      map.setView(currentCenter, currentZoom, { animate: false });
+    }
+
+    let arrowMarkersGroup = null;
+
+    function calcHeading(lat1, lon1, lat2, lon2) {
+      const dLng = (lon2 - lon1) * Math.PI / 180;
+      const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
+      const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function renderDirectionArrows(latLngs) {
+      if (!arrowMarkersGroup) arrowMarkersGroup = L.layerGroup();
+      arrowMarkersGroup.clearLayers();
+      if (!map || !latLngs || latLngs.length < 2) return;
+
+      const step = Math.max(6, Math.floor(latLngs.length / 40));
+      for (let i = 0; i < latLngs.length - 1; i += step) {
+        const p1 = latLngs[i];
+        const p2 = latLngs[Math.min(i + 3, latLngs.length - 1)];
+        const angle = calcHeading(p1[0], p1[1], p2[0], p2[1]);
+
+        const icon = L.divIcon({
+          className: 'custom-arrow-icon',
+          html: `<div style="transform: rotate(${Math.round(angle)}deg); font-size:11px; color:#ffffff; text-shadow:0 0 3px #000, 0 0 6px #0284c7; line-height:1; pointer-events:none; font-weight:900;">▲</div>`,
+          iconSize: [14, 14],
+          iconAnchor: [7, 7]
+        });
+        L.marker(p1, { icon: icon, interactive: false }).addTo(arrowMarkersGroup);
+      }
+      arrowMarkersGroup.addTo(map);
+    }
+
+    function renderMapTrack() {
+      if (trackPolyline) map.removeLayer(trackPolyline);
+
+      if (currentMapViewMode === 'after') {
+        // Render REPAIRED track (skipping active tangles)
+        let activeTangles = detectedTangles.filter(t => t.active);
+        let filterMask = new Array(records.length).fill(true);
+        activeTangles.forEach(t => {
+          for (let k = t.startIdx + 1; k < t.endIdx; k++) filterMask[k] = false;
+        });
+
+        let repairedLatLngs = [];
+        for (let i = 0; i < records.length; i++) {
+          if (filterMask[i]) repairedLatLngs.push([records[i].lat, records[i].lng]);
+        }
+
+        trackPolyline = L.polyline(repairedLatLngs, {
+          color: '#10b981', // Clean green track for "After" view
+          weight: 4,
+          opacity: 0.9
+        }).addTo(map);
+        renderDirectionArrows(repairedLatLngs);
+      } else {
+        // Render ORIGINAL full track (blue)
+        const latLngs = records.map(r => [r.lat, r.lng]);
+        trackPolyline = L.polyline(latLngs, {
+          color: '#38bdf8',
+          weight: 4,
+          opacity: 0.85
+        }).addTo(map);
+        renderDirectionArrows(latLngs);
+      }
+    }
+
+    function highlightMapCursor(idx) {
+      if (!records[idx]) return;
+      const rec = records[idx];
+
+      if (!mapCursorMarker) {
+        mapCursorMarker = L.circleMarker([rec.lat, rec.lng], {
+          radius: 7,
+          color: '#ffffff',
+          fillColor: '#38bdf8',
+          fillOpacity: 1.0,
+          weight: 3
+        }).addTo(map);
+      } else {
+        mapCursorMarker.setLatLng([rec.lat, rec.lng]);
+      }
+
+      document.getElementById('chartCursorInfo').innerText = 
+        `${Math.round(rec.alt || 0)} m | ${(rec.speed || 0).toFixed(1)} km/h | ${rec.hr || '--'} bpm`;
+    }
+
+    function renderChartData() {
+      if (records.length === 0) return;
+
+      const labels = records.map((r, i) => Math.round(r.dist || i * 10) + ' m');
+      let chartData = [];
+      let labelText = '';
+      let colorCode = '#38bdf8';
+
+      if (currentChartMode === 'alt') {
+        chartData = records.map(r => r.alt || 0);
+        labelText = 'Výška (m)';
+        colorCode = '#38bdf8';
+      } else if (currentChartMode === 'hr') {
+        chartData = records.map(r => r.hr || 0);
+        labelText = 'Tepová frekvence (bpm)';
+        colorCode = '#f43f5e';
+      } else if (currentChartMode === 'speed') {
+        chartData = records.map(r => r.speed || 0);
+        labelText = 'Rychlost (km/h)';
+        colorCode = '#f59e0b';
+      } else if (currentChartMode === 'cad') {
+        chartData = records.map(r => r.cadence || 0);
+        labelText = 'Kadence (rpm)';
+        colorCode = '#a855f7';
+      }
+
+      chart.data.labels = labels;
+      chart.data.datasets[0].label = labelText;
+      chart.data.datasets[0].data = chartData;
+      chart.data.datasets[0].borderColor = colorCode;
+      chart.data.datasets[0].backgroundColor = colorCode + '25';
+      chart.update();
+    }
+
+    // --- MODULE 1: GPS DRIFT CLEANER ALGORITHM ---
+    function updateDetectionSettings() {
+      const r = document.getElementById('inputRadius').value;
+      const t = document.getElementById('inputMinTime').value;
+      document.getElementById('valRadius').innerText = r + ' m';
+      document.getElementById('valMinTime').innerText = t + ' min';
+      runTangleDetection();
+    }
+
+    function quickDetectTanglesCount(recs) {
+      let count = 0;
+      let n = recs.length;
+      let i = 0;
+      const radiusMeters = 30.0;
+      const minDurationSec = 180;
+
+      while (i < n - 1) {
+        let j = i + 1;
+        const centerLat = recs[i].lat;
+        const centerLng = recs[i].lng;
+        let totalPathDist = 0;
+
+        while (j < n) {
+          const stepDist = calcHaversine(recs[j - 1].lat, recs[j - 1].lng, recs[j].lat, recs[j].lng);
+          const dFromCenter = calcHaversine(centerLat, centerLng, recs[j].lat, recs[j].lng);
+          if (dFromCenter > radiusMeters) break;
+          totalPathDist += stepDist;
+          j++;
+        }
+
+        const dur = recs[j - 1].timestamp - recs[i].timestamp;
+        const recCount = j - i;
+        const avgIntervalSec = dur > 0 ? dur / (recCount || 1) : 999;
+        const avgSpdKmh = dur > 0 ? (totalPathDist / 1000.0) / (dur / 3600.0) : 0;
+
+        if (dur >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && recCount >= 15 && avgIntervalSec <= 15.0) {
+          count++;
+          i = j;
+        } else {
+          i++;
+        }
+      }
+      return count;
+    }
+
+    function quickDetectGapsCount(recs) {
+      let count = 0;
+      const slider = document.getElementById('inputMinGapDist');
+      const minGapDistM = slider ? parseFloat(slider.value) : 25.0;
+      for (let i = 0; i < recs.length - 1; i++) {
+        const dt = recs[i + 1].timestamp - recs[i].timestamp;
+        const dd = calcHaversine(recs[i].lat, recs[i].lng, recs[i + 1].lat, recs[i + 1].lng);
+        if (dt >= 120 && dd >= minGapDistM) count++;
+      }
+      return count;
+    }
+
+    function runTangleDetection() {
+      detectedTangles.forEach(t => {
+        if (t.circlePoly) map.removeLayer(t.circlePoly);
+        if (t.markerA) map.removeLayer(t.markerA);
+        if (t.markerB) map.removeLayer(t.markerB);
+        if (t.tangledPolyline) map.removeLayer(t.tangledPolyline);
+        if (t.bridgePolyline) map.removeLayer(t.bridgePolyline);
+      });
+      detectedTangles = [];
+
+      const radiusMeters = parseFloat(document.getElementById('inputRadius').value);
+      const minDurationSec = parseFloat(document.getElementById('inputMinTime').value) * 60;
+
+      let n = records.length;
+      let i = 0;
+      let tangleId = 1;
+
+      while (i < n - 1) {
+        let j = i + 1;
+        const centerLat = records[i].lat;
+        const centerLng = records[i].lng;
+        let totalPathDist = 0;
+
+        while (j < n) {
+          const stepDist = calcHaversine(records[j - 1].lat, records[j - 1].lng, records[j].lat, records[j].lng);
+          const dFromCenter = calcHaversine(centerLat, centerLng, records[j].lat, records[j].lng);
+          if (dFromCenter > radiusMeters) break;
+          totalPathDist += stepDist;
+          j++;
+        }
+
+        const duration = records[j - 1].timestamp - records[i].timestamp;
+        const recCount = j - i;
+        const avgIntervalSec = duration > 0 ? duration / (recCount || 1) : 999;
+        const avgSpdKmh = duration > 0 ? (totalPathDist / 1000.0) / (duration / 3600.0) : 0;
+
+        if (duration >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && recCount >= 15 && avgIntervalSec <= 15.0) {
+          detectedTangles.push({
+            id: tangleId++,
+            startIdx: i,
+            endIdx: j - 1,
+            active: true,
+            circlePoly: null,
+            markerA: null,
+            markerB: null,
+            tangledPolyline: null,
+            bridgePolyline: null
+          });
+          i = j;
+        } else {
+          i++;
+        }
+      }
+
+      renderTanglesOnMap();
+      updateTangleListUI();
+      updateLiveSavingsUI();
+    }
+
+    function renderTanglesOnMap() {
+      // Clear existing tangle map layers
+      detectedTangles.forEach(t => {
+        if (t.circlePoly) map.removeLayer(t.circlePoly);
+        if (t.markerA) map.removeLayer(t.markerA);
+        if (t.markerB) map.removeLayer(t.markerB);
+        if (t.tangledPolyline) map.removeLayer(t.tangledPolyline);
+        if (t.bridgePolyline) map.removeLayer(t.bridgePolyline);
+      });
+
+      if (currentMapViewMode === 'after') return; // In "After" mode, hide tangle overlays
+
+      detectedTangles.forEach(t => {
+        const startRec = records[t.startIdx];
+        const endRec = records[t.endIdx];
+
+        // 1. Red circle area
+        const circle = L.circle([startRec.lat, startRec.lng], {
+          color: '#f43f5e',
+          fillColor: '#f43f5e',
+          fillOpacity: 0.18,
+          radius: parseFloat(document.getElementById('inputRadius').value)
+        }).addTo(map);
+        t.circlePoly = circle;
+
+        // 2. Red highlighted tangled track segment (points inside A-B)
+        const tangledPts = records.slice(t.startIdx, t.endIdx + 1).map(r => [r.lat, r.lng]);
+        const tangledPoly = L.polyline(tangledPts, {
+          color: '#f43f5e',
+          weight: 4,
+          opacity: 0.9
+        }).addTo(map);
+        t.tangledPolyline = tangledPoly;
+
+        // 3. Green dashed proposed cut bridge line (connecting A directly to B)
+        const bridgePoly = L.polyline([[startRec.lat, startRec.lng], [endRec.lat, endRec.lng]], {
+          color: '#10b981',
+          weight: 4,
+          dashArray: '6, 6',
+          opacity: 1.0
+        }).addTo(map);
+        t.bridgePolyline = bridgePoly;
+
+        // 4. Draggable Markers A and B
+        const iconA = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="marker-badge marker-a">A</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const markerA = L.marker([startRec.lat, startRec.lng], { icon: iconA, draggable: true }).addTo(map);
+        markerA.on('drag', (e) => onMarkerDrag(t, 'A', e.target.getLatLng()));
+
+        const iconB = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="marker-badge marker-b">B</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const markerB = L.marker([endRec.lat, endRec.lng], { icon: iconB, draggable: true }).addTo(map);
+        markerB.on('drag', (e) => onMarkerDrag(t, 'B', e.target.getLatLng()));
+
+        t.markerA = markerA;
+        t.markerB = markerB;
+      });
+    }
+
+    function onMarkerDrag(tangle, markerType, latLng) {
+      let minD = Infinity;
+      let closestIdx = tangle.startIdx;
+
+      const searchStart = Math.max(0, tangle.startIdx - 80);
+      const searchEnd = Math.min(records.length - 1, tangle.endIdx + 80);
+
+      for (let k = searchStart; k <= searchEnd; k++) {
+        const d = calcHaversine(latLng.lat, latLng.lng, records[k].lat, records[k].lng);
+        if (d < minD) {
+          minD = d;
+          closestIdx = k;
+        }
+      }
+
+      if (markerType === 'A') {
+        if (closestIdx < tangle.endIdx) tangle.startIdx = closestIdx;
+      } else {
+        if (closestIdx > tangle.startIdx) tangle.endIdx = closestIdx;
+      }
+
+      const recA = records[tangle.startIdx];
+      const recB = records[tangle.endIdx];
+
+      // Update map graphics live while dragging!
+      if (tangle.tangledPolyline) {
+        const tangledPts = records.slice(tangle.startIdx, tangle.endIdx + 1).map(r => [r.lat, r.lng]);
+        tangle.tangledPolyline.setLatLngs(tangledPts);
+      }
+      if (tangle.bridgePolyline) {
+        tangle.bridgePolyline.setLatLngs([[recA.lat, recA.lng], [recB.lat, recB.lng]]);
+      }
+      if (tangle.circlePoly) {
+        tangle.circlePoly.setLatLng([recA.lat, recA.lng]);
+      }
+
+      updateTangleListUI();
+      updateLiveSavingsUI();
+    }
+
+    function updateTangleListUI() {
+      const container = document.getElementById('tanglesList');
+      document.getElementById('tangleCount').innerText = detectedTangles.length;
+
+      if (detectedTangles.length === 0) {
+        container.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;">Žádná stacionární klubka nedetekována.</div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      detectedTangles.forEach(t => {
+        const recA = records[t.startIdx];
+        const recB = records[t.endIdx];
+
+        const durationSec = recB.timestamp - recA.timestamp;
+        const distCutM = recB.dist - recA.dist;
+
+        const durMin = Math.floor(durationSec / 60);
+        const durSec = durationSec % 60;
+
+        const timeStrA = recA.timestamp ? formatTimeCET(recA.timestamp) : `--:--:--`;
+        const timeStrB = recB.timestamp ? formatTimeCET(recB.timestamp) : `--:--:--`;
+
+        const card = document.createElement('div');
+        card.className = `item-card ${t.active ? 'active' : ''}`;
+        card.innerHTML = `
+          <div class="item-header">
+            <div class="item-title">
+              <input type="checkbox" ${t.active ? 'checked' : ''} onchange="toggleTangleActive(${t.id}, this.checked)">
+              <span>Klubko #${t.id}</span>
+            </div>
+            <span style="font-size:0.75rem; color:var(--accent-rose); font-weight:700;">-${durMin}m ${durSec}s</span>
+          </div>
+          <div class="item-meta" style="flex-direction:column; gap:3px; margin-top:4px;">
+            <div style="font-size:0.76rem; color:#fff; display:flex; justify-content:space-between;">
+              <span><i class="fa-regular fa-clock" style="color:var(--primary); margin-right:4px;"></i><strong>Čas A:</strong> ${timeStrA} &rarr; <strong>Čas B:</strong> ${timeStrB}</span>
+            </div>
+            <div style="font-size:0.73rem; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:2px;">
+              <span>Body A: ${t.startIdx} &rarr; B: ${t.endIdx}</span>
+              <span>Odmazáno: ${Math.round(distCutM)} m</span>
+            </div>
+          </div>
+        `;
+        card.onclick = (e) => {
+          if (e.target.tagName !== 'INPUT') focusOnTangle(t);
+        };
+        container.appendChild(card);
+      });
+    }
+
+    function formatTimeCET(garminTimestamp) {
+      const dt = new Date((garminTimestamp + GARMIN_EPOCH_OFFSET) * 1000);
+      return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function toggleTangleActive(id, checked) {
+      const t = detectedTangles.find(x => x.id === id);
+      if (t) {
+        t.active = checked;
+        updateLiveSavingsUI();
+        if (currentMapViewMode === 'after') renderMapTrack();
+      }
+    }
+
+    function focusOnTangle(t) {
+      const startRec = records[t.startIdx];
+      const endRec = records[t.endIdx];
+      const bounds = L.latLngBounds([
+        [startRec.lat, startRec.lng],
+        [endRec.lat, endRec.lng]
+      ]);
+      map.fitBounds(bounds, { maxZoom: 18, padding: [60, 60] });
+    }
+
+    function updateLiveSavingsUI() {
+      let totalTimeSec = 0;
+      let totalDistM = 0;
+
+      detectedTangles.filter(t => t.active).forEach(t => {
+        totalTimeSec += (records[t.endIdx].timestamp - records[t.startIdx].timestamp);
+        totalDistM += (records[t.endIdx].dist - records[t.startIdx].dist);
+      });
+
+      const m = Math.floor(totalTimeSec / 60);
+      const s = totalTimeSec % 60;
+      const text = `Vyříznuto: ${m} min ${s} s a ${Math.round(totalDistM)} metrů`;
+      document.getElementById('liveSavingsText').innerText = text;
+    }
+
+    // --- MODULE 2: MISSING ROUTE INTERPOLATOR & DEM TERRAIN LOOKUP ---
+    function runGapDetection() {
+      if (detectedGaps) {
+        detectedGaps.forEach(g => {
+          if (g.markerA) map.removeLayer(g.markerA);
+          if (g.markerB) map.removeLayer(g.markerB);
+          if (g.gapPolyline) map.removeLayer(g.gapPolyline);
+        });
+      }
+      detectedGaps = [];
+      let gapId = 1;
+      const slider = document.getElementById('inputMinGapDist');
+      const minGapDistM = slider ? parseFloat(slider.value) : 25.0;
+
+      for (let i = 0; i < records.length - 1; i++) {
+        const dt = records[i + 1].timestamp - records[i].timestamp;
+        const dd = calcHaversine(records[i].lat, records[i].lng, records[i + 1].lat, records[i + 1].lng);
+
+        if (dt >= 120 && dd >= minGapDistM) {
+          detectedGaps.push({
+            id: gapId++,
+            startIdx: i,
+            endIdx: i + 1,
+            timeGapSec: dt,
+            distGapM: dd,
+            drawnWaypoints: [],
+            markerA: null,
+            markerB: null,
+            gapPolyline: null
+          });
+        }
+      }
+
+      updateGapListUI();
+    }
+
+    let drawingMarkersLayer = null;
+    let activeGapForDrawing = null;
+
+    function updateGapListUI() {
+      const container = document.getElementById('gapsList');
+      document.getElementById('gapCount').innerText = detectedGaps.length;
+
+      if (detectedGaps.length === 0) {
+        container.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;">Žádné přímkové mezery nedetekovány.</div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      detectedGaps.forEach(g => {
+        const recA = records[g.startIdx];
+        const recB = records[g.endIdx];
+        const durMin = Math.floor(g.timeGapSec / 60);
+
+        const timeStrA = recA.timestamp ? formatTimeCET(recA.timestamp) : `--:--:--`;
+        const timeStrB = recB.timestamp ? formatTimeCET(recB.timestamp) : `--:--:--`;
+        const numDrawn = g.drawnWaypoints ? g.drawnWaypoints.length : 0;
+
+        const card = document.createElement('div');
+        card.className = `item-card ${g.active ? 'active' : ''}`;
+        card.innerHTML = `
+          <div class="item-header">
+            <div class="item-title">
+              <input type="checkbox" ${g.active ? 'checked' : ''} onchange="toggleGapActive(${g.id}, this.checked)">
+              <span>Mezera #${g.id} (Zapomenutý restart)</span>
+            </div>
+            <span style="font-size:0.75rem; color:var(--accent-amber); font-weight:700;">${durMin} min / ${Math.round(g.distGapM)}m</span>
+          </div>
+          <div class="item-meta" style="flex-direction:column; gap:3px; margin-top:4px;">
+            <div style="font-size:0.76rem; color:#fff; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+              <span><i class="fa-solid fa-circle-pause" style="color:var(--accent-amber); margin-right:4px;"></i><strong>Pauza A:</strong> ${timeStrA}</span>
+              <span><i class="fa-solid fa-circle-play" style="color:var(--accent-green); margin-right:4px;"></i><strong>Restart B:</strong> ${timeStrB}</span>
+            </div>
+            <div style="font-size:0.73rem; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:2px;">
+              <span>Body A: ${g.startIdx} &rarr; B: ${g.endIdx}</span>
+              <span style="color:${numDrawn > 0 ? '#10b981' : 'var(--text-muted)'}; font-weight:700;">
+                ${numDrawn > 0 ? `✏️ Dokresleno ${numDrawn} bodů` : 'Nevyplněno'}
+              </span>
+            </div>
+            <button type="button" class="btn" style="margin-top:6px; font-size:0.75rem; padding:4px 8px; justify-content:center; background:rgba(245,158,11,0.15); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);" onclick="startDrawingForGap(${g.id})">
+              <i class="fa-solid fa-pen-ruler"></i> Dokreslit trasu na mapě
+            </button>
+          </div>
+        `;
+        card.onclick = (e) => {
+          if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+            focusOnGap(g);
+          }
+        };
+        container.appendChild(card);
+      });
+
+      renderGapsOnMap();
+    }
+
+    function toggleGapActive(id, checked) {
+      const g = detectedGaps.find(x => x.id === id);
+      if (g) {
+        g.active = checked;
+        updateGapListUI();
+      }
+    }
+
+    function startDrawingForGap(id) {
+      const g = detectedGaps.find(x => x.id === id);
+      if (!g) return;
+      activeGapForDrawing = g;
+      g.active = true;
+      focusOnGap(g);
+
+      if (g.drawnWaypoints && g.drawnWaypoints.length > 0) {
+        drawnRouteNodes = [...g.drawnWaypoints];
+      } else {
+        drawnRouteNodes = [];
+      }
+
+      if (!isDrawingMode) toggleDrawingTool(g);
+    }
+
+    function renderGapsOnMap() {
+      detectedGaps.forEach(g => {
+        if (g.markerA) map.removeLayer(g.markerA);
+        if (g.markerB) map.removeLayer(g.markerB);
+        if (g.gapPolyline) map.removeLayer(g.gapPolyline);
+
+        const recA = records[g.startIdx];
+        const recB = records[g.endIdx];
+
+        const gapPoly = L.polyline([[recA.lat, recA.lng], [recB.lat, recB.lng]], {
+          color: '#f59e0b',
+          weight: 3,
+          dashArray: '8, 8',
+          opacity: 0.9
+        }).addTo(map);
+        g.gapPolyline = gapPoly;
+
+        const iconA = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="marker-badge marker-gap" title="Pauza A"><i class="fa-solid fa-pause"></i></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const markerA = L.marker([recA.lat, recA.lng], { icon: iconA }).addTo(map);
+
+        const iconB = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="marker-badge marker-a" title="Restart B"><i class="fa-solid fa-play"></i></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const markerB = L.marker([recB.lat, recB.lng], { icon: iconB }).addTo(map);
+
+        g.markerA = markerA;
+        g.markerB = markerB;
+      });
+    }
+
+    function focusOnGap(g) {
+      const startRec = records[g.startIdx];
+      const endRec = records[g.endIdx];
+      const bounds = L.latLngBounds([
+        [startRec.lat, startRec.lng],
+        [endRec.lat, endRec.lng]
+      ]);
+      map.fitBounds(bounds, { maxZoom: 18, padding: [60, 60] });
+    }
+
+    function toggleDrawingTool(gap) {
+      if (gap) activeGapForDrawing = gap;
+      isDrawingMode = !isDrawingMode;
+      const btn = document.getElementById('btnToggleDrawing');
+      const undoBtn = document.getElementById('btnUndoDrawing');
+      const lbl = document.getElementById('lblDrawingBtn');
+      const statusBox = document.getElementById('demStatusBox');
+
+      if (!drawingMarkersLayer) {
+        drawingMarkersLayer = L.layerGroup().addTo(map);
+      }
+
+      if (isDrawingMode) {
+        btn.classList.remove('btn-primary');
+        btn.style.background = 'var(--accent-rose)';
+        lbl.innerText = i18nData[currentLang].stopDrawing || 'Ukončit kreslení';
+        statusBox.style.display = 'flex';
+        undoBtn.style.display = drawnRouteNodes.length > 0 ? 'inline-flex' : 'none';
+        map.getContainer().style.cursor = 'crosshair';
+        map.on('click', onMapClickDraw);
+      } else {
+        btn.classList.add('btn-primary');
+        btn.style.background = '';
+        lbl.innerText = i18nData[currentLang].startDrawing || 'Zapnout kreslicí nástroj';
+        statusBox.style.display = 'none';
+        undoBtn.style.display = 'none';
+        map.getContainer().style.cursor = '';
+        map.off('click', onMapClickDraw);
+      }
+    }
+
+    function undoLastDrawnWaypoint() {
+      if (drawnRouteNodes.length === 0) return;
+      drawnRouteNodes.pop();
+
+      if (drawingMarkersLayer) {
+        const layers = drawingMarkersLayer.getLayers();
+        if (layers.length > 0) drawingMarkersLayer.removeLayer(layers[layers.length - 1]);
+      }
+      if (drawingPolyline) {
+        drawingPolyline.setLatLngs(drawnRouteNodes);
+      }
+      if (activeGapForDrawing) {
+        activeGapForDrawing.drawnWaypoints = [...drawnRouteNodes];
+        updateGapListUI();
+      }
+      if (drawnRouteNodes.length === 0) {
+        document.getElementById('btnUndoDrawing').style.display = 'none';
+      }
+    }
+
+    function onMapClickDraw(e) {
+      drawnRouteNodes.push(e.latlng);
+      document.getElementById('btnUndoDrawing').style.display = 'inline-flex';
+
+      const nodeNum = drawnRouteNodes.length;
+      const icon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div class="marker-badge" style="background:#f59e0b; color:#fff; border-radius:50%; font-size:11px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 6px rgba(0,0,0,0.5);">${nodeNum}</div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+      L.marker(e.latlng, { icon: icon }).addTo(drawingMarkersLayer);
+
+      if (!drawingPolyline) {
+        drawingPolyline = L.polyline([e.latlng], {
+          color: '#f59e0b',
+          weight: 4,
+          dashArray: '6, 6'
+        }).addTo(map);
+      } else {
+        drawingPolyline.addLatLng(e.latlng);
+      }
+
+      if (activeGapForDrawing) {
+        activeGapForDrawing.drawnWaypoints = [...drawnRouteNodes];
+        activeGapForDrawing.active = true;
+        updateGapListUI();
+      }
+    }
+
+    // DEM Terrain Elevation API Lookup with Barometric Altimeter Offset Calibration
+    async function fetchDemElevationCalibrated(latLngList, altA, altB) {
+      try {
+        const lats = latLngList.map(p => p.lat.toFixed(6)).join(',');
+        const lngs = latLngList.map(p => p.lng.toFixed(6)).join(',');
+        const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Elevation API request failed');
+        const data = await response.json();
+        
+        if (data && data.elevation && data.elevation.length === latLngList.length) {
+          const demArray = data.elevation;
+          const demA = demArray[0];
+          const demB = demArray[demArray.length - 1];
+
+          // Compute barometric offset deltas at Point A and Point B
+          const offsetA = altA - demA;
+          const offsetB = altB - demB;
+
+          // Compute cumulative spatial distances for exact distance-weighted calibration ramp
+          let cumDists = [0];
+          let totalLen = 0;
+          for (let i = 1; i < latLngList.length; i++) {
+            const d = calcHaversine(latLngList[i-1].lat, latLngList[i-1].lng, latLngList[i].lat, latLngList[i].lng);
+            totalLen += d;
+            cumDists.push(totalLen);
+          }
+
+          // Apply calibrated elevation with distance-weighted barometric offset ramp!
+          const calibratedAlts = demArray.map((demVal, i) => {
+            const ratio = totalLen > 0 ? cumDists[i] / totalLen : i / (latLngList.length - 1 || 1);
+            const rampOffset = offsetA + ratio * (offsetB - offsetA);
+            return demVal + rampOffset;
+          });
+
+          return calibratedAlts;
+        }
+      } catch (err) {
+        console.warn('DEM Elevation API unavailable, falling back to barometric ramp:', err);
+      }
+
+      // Fallback: Linear ramp if offline or API unavailable
+      return latLngList.map((p, i) => {
+        const ratio = i / (latLngList.length - 1 || 1);
+        return altA + ratio * (altB - altA);
+      });
+    }
+
+    const GARMIN_SPORT_NAMES = {
+      cs: {
+        0: 'Obecná aktivita', 1: '🏃 Běh', 2: '🚴 Cyklistika', 3: '🏊‍♂️ Triatlon', 4: '🏋️ Fitness / Posilování',
+        5: '🏊 Plavání', 6: '🏀 Basketbal', 7: '⚽ Fotbal', 8: '🎾 Tenis', 10: '💪 Trénink', 11: '🚶 Chůze',
+        12: '🎿 Běžkování', 13: '🎿 Sjezdové lyžování', 14: '🏂 Snowboard', 15: '🚣 Veslování', 17: '🥾 Turistika / Hiking',
+        18: '🚣 Pádlování', 20: '🏍️ Motocykl', 21: '⛵ Jachting', 22: '🚗 Řízení', 23: '⛳ Golf', 24: '🎽 Multisport',
+        25: '🏄 SUP', 28: '🚣 Kajak', 30: '🏄 Windsurfing', 35: '🧗 Schody', 37: '🧗 Lezení'
+      },
+      en: {
+        0: 'Generic Activity', 1: '🏃 Running', 2: '🚴 Cycling', 3: '🏊‍♂️ Transition', 4: '🏋️ Fitness',
+        5: '🏊 Swimming', 6: '🏀 Basketball', 7: '⚽ Soccer', 8: '🎾 Tennis', 10: '💪 Training', 11: '🚶 Walking',
+        12: '🎿 XC Skiing', 13: '🎿 Alpine Skiing', 14: '🏂 Snowboarding', 15: '🚣 Rowing', 17: '🥾 Hiking',
+        18: '🚣 Paddling', 20: '🏍️ Motorcycling', 21: '⛵ Boating', 22: '🚗 Driving', 23: '⛳ Golf', 24: '🎽 Multisport',
+        25: '🏄 SUP', 28: '🚣 Kayaking', 30: '🏄 Windsurfing', 35: '🧗 Stairs', 37: '🧗 Climbing'
+      }
+    };
+
+    // --- ACTIVITY STATS RECALCULATION & UI ---
+    function updateActivityStatsUI() {
+      if (records.length === 0) return;
+
+      const totalDist = records[records.length - 1].dist || 0;
+      const totalTimeSec = records[records.length - 1].timestamp - records[0].timestamp;
+
+      const validHrs = records.filter(r => r.hr && r.hr > 0).map(r => r.hr);
+      const avgHr = validHrs.length > 0 ? Math.round(validHrs.reduce((a, b) => a + b, 0) / validHrs.length) : 0;
+
+      const avgSpeedKmh = totalTimeSec > 0 ? (totalDist / 1000) / (totalTimeSec / 3600) : 0;
+
+      document.getElementById('statDistance').innerText = (totalDist / 1000).toFixed(2) + ' km';
+      document.getElementById('statTime').innerText = formatSeconds(totalTimeSec);
+      document.getElementById('statAvgSpeed').innerText = avgSpeedKmh.toFixed(1) + ' km/h';
+      document.getElementById('statAvgHr').innerText = (avgHr > 0 ? avgHr + ' bpm' : '--');
+
+      if (fileIdHeader && fileIdHeader.sport !== undefined) {
+        const sportMap = GARMIN_SPORT_NAMES[currentLang] || GARMIN_SPORT_NAMES.cs;
+        const sportName = sportMap[fileIdHeader.sport] || `Aktivita #${fileIdHeader.sport}`;
+        document.getElementById('actSportBadge').innerText = sportName;
+        document.getElementById('actSportBadge').style.display = 'inline-flex';
+      } else {
+        document.getElementById('actSportBadge').style.display = 'none';
+      }
+
+      // Compute average recording interval to detect Smart vs Every-Second recording mode!
+      let intervals = [];
+      for (let i = 1; i < records.length; i++) {
+        const dt = records[i].timestamp - records[i-1].timestamp;
+        if (dt > 0 && dt < 120) intervals.push(dt);
+      }
+      const avgStepSec = intervals.length > 0 ? (intervals.reduce((a, b) => a + b, 0) / intervals.length) : 1;
+      const isEverySecond = avgStepSec <= 1.45;
+
+      const modeText = isEverySecond ? 
+        (currentLang === 'cs' ? '⏱️ Záznam: Po vteřině' : '⏱️ Mode: 1-Second') : 
+        (currentLang === 'cs' ? '🧠 Záznam: Smart (Chytrý)' : '🧠 Mode: Smart');
+
+      document.getElementById('actRecModeBadge').innerText = modeText;
+      document.getElementById('actRecModeBadge').style.display = 'inline-flex';
+    }
+
+    // --- RECONSTRUCTION & EXPORT ENGINE ---
+    function showExportModal() {
+      document.getElementById('exportModal').classList.add('open');
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').classList.remove('open');
+    }
+
+    async function buildRepairedFitBinary() {
+      let activeTangles = detectedTangles.filter(t => t.active);
+      let filterMask = new Array(records.length).fill(true);
+
+      activeTangles.forEach(t => {
+        for (let k = t.startIdx + 1; k < t.endIdx; k++) {
+          filterMask[k] = false; // Drop inner tangle points
+        }
+      });
+
+      let repairedRecords = [];
+      let currentDistanceOffset = 0;
+
+      for (let i = 0; i < records.length; i++) {
+        if (!filterMask[i]) continue;
+
+        let r = Object.assign({}, records[i]);
+
+        activeTangles.forEach(t => {
+          if (i >= t.endIdx) {
+            const cutDist = records[t.endIdx].dist - records[t.startIdx].dist;
+            currentDistanceOffset += cutDist;
+          }
+        });
+
+        r.dist = Math.max(0, r.dist - currentDistanceOffset);
+        repairedRecords.push(r);
+      }
+
+      // Interpolate drawn waypoints with DEM Real Terrain & Barometric Calibration Offset
+      if (drawnRouteNodes.length > 0 && detectedGaps.length > 0) {
+        const targetGap = detectedGaps[0];
+        const recA = records[targetGap.startIdx];
+        const recB = records[targetGap.endIdx];
+
+        const allNodes = [{ lat: recA.lat, lng: recA.lng }, ...drawnRouteNodes, { lat: recB.lat, lng: recB.lng }];
+
+        // Fetch DEM real elevation heights calibrated to watch's barometric baseline!
+        const calibratedAlts = await fetchDemElevationCalibrated(allNodes, recA.alt || 250, recB.alt || 250);
+
+        let totalDrawnLength = 0;
+        let prevPt = recA;
+        drawnRouteNodes.forEach(node => {
+          totalDrawnLength += calcHaversine(prevPt.lat, prevPt.lng, node.lat, node.lng);
+          prevPt = node;
+        });
+        totalDrawnLength += calcHaversine(prevPt.lat, prevPt.lng, recB.lat, recB.lng);
+
+        const totalDt = recB.timestamp - recA.timestamp;
+        let currDist = recA.dist || 0;
+        let prevNode = recA;
+        let drawnWaypointsRecs = [];
+
+        drawnRouteNodes.forEach((node, nIdx) => {
+          const segDist = calcHaversine(prevNode.lat, prevNode.lng, node.lat, node.lng);
+          currDist += segDist;
+
+          const ratio = (currDist - (recA.dist || 0)) / (totalDrawnLength || 1);
+          const t = Math.round(recA.timestamp + totalDt * ratio);
+
+          // Calibrated DEM elevation value
+          const alt = calibratedAlts[nIdx + 1] || ((recA.alt || 250) + ratio * ((recB.alt || 250) - (recA.alt || 250)));
+          const hr = Math.round((recA.hr || 140) + ratio * ((recB.hr || 140) - (recA.hr || 140)));
+          const cad = Math.round((recA.cadence || 85) + ratio * ((recB.cadence || 85) - (recA.cadence || 85)));
+          const spd = totalDt > 0 ? (totalDrawnLength / 1000) / (totalDt / 3600) : 10.0;
+
+          drawnWaypointsRecs.push({
+            timestamp: t,
+            lat: node.lat,
+            lng: node.lng,
+            alt: alt,
+            hr: hr,
+            cadence: cad,
+            speed: spd,
+            dist: currDist
+          });
+
+          prevNode = node;
+        });
+
+        const insertPos = repairedRecords.findIndex(r => r.timestamp >= recB.timestamp);
+        if (insertPos >= 0) {
+          repairedRecords.splice(insertPos, 0, ...drawnWaypointsRecs);
+        }
+      }
+
+      const validHrs = repairedRecords.filter(r => r.hr && r.hr > 0).map(r => r.hr);
+      const avgHr = validHrs.length > 0 ? Math.round(validHrs.reduce((a, b) => a + b, 0) / validHrs.length) : 0;
+
+      const validCads = repairedRecords.filter(r => r.cadence && r.cadence > 0).map(r => r.cadence);
+      const avgCad = validCads.length > 0 ? Math.round(validCads.reduce((a, b) => a + b, 0) / validCads.length) : 0;
+
+      const encodedBuffer = encodeNativeFitBinary(repairedRecords, fileIdHeader, avgHr, avgCad);
+      return encodedBuffer;
+    }
+
+    function encodeNativeFitBinary(repairedRecs, headerInfo, avgHr, avgCad) {
+      // Shift file_id time_created by +1 second to bypass Garmin Connect duplicate check!
+      const shiftedTimeCreated = (headerInfo.timeCreated || Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET) + 1;
+
+      const buffer = new ArrayBuffer(repairedRecs.length * 64 + 1024);
+      const view = new DataView(buffer);
+      const bytes = new Uint8Array(buffer);
+
+      let offset = 14;
+
+      // --- Definition Message: Local 0 = file_id (Global 0) ---
+      bytes[offset++] = 0x40;
+      bytes[offset++] = 0x00;
+      bytes[offset++] = 0x00;
+      view.setUint16(offset, 0, true); offset += 2;
+      bytes[offset++] = 4;
+
+      bytes[offset++] = 0; bytes[offset++] = 1; bytes[offset++] = 0x00;
+      bytes[offset++] = 1; bytes[offset++] = 2; bytes[offset++] = 0x84;
+      bytes[offset++] = 2; bytes[offset++] = 2; bytes[offset++] = 0x84;
+      bytes[offset++] = 4; bytes[offset++] = 4; bytes[offset++] = 0x86;
+
+      // Data Message: Local 0 (file_id)
+      bytes[offset++] = 0x00;
+      bytes[offset++] = 4;
+      view.setUint16(offset, 1, true); offset += 2;
+      view.setUint16(offset, 1, true); offset += 2;
+      view.setUint32(offset, shiftedTimeCreated, true); offset += 4;
+
+      // --- Definition Message: Local 1 = record (Global 20) ---
+      bytes[offset++] = 0x41;
+      bytes[offset++] = 0x00;
+      bytes[offset++] = 0x00;
+      view.setUint16(offset, 20, true); offset += 2;
+      bytes[offset++] = 7;
+
+      bytes[offset++] = 253; bytes[offset++] = 4; bytes[offset++] = 0x86;
+      bytes[offset++] = 0;   bytes[offset++] = 4; bytes[offset++] = 0x85;
+      bytes[offset++] = 1;   bytes[offset++] = 4; bytes[offset++] = 0x85;
+      bytes[offset++] = 78;  bytes[offset++] = 4; bytes[offset++] = 0x86;
+      bytes[offset++] = 3;   bytes[offset++] = 1; bytes[offset++] = 0x02;
+      bytes[offset++] = 4;   bytes[offset++] = 1; bytes[offset++] = 0x02;
+      bytes[offset++] = 5;   bytes[offset++] = 4; bytes[offset++] = 0x86;
+
+      // Data Messages: Local 1 (records)
+      for (const r of repairedRecs) {
+        bytes[offset++] = 0x01;
+        view.setUint32(offset, r.timestamp, true); offset += 4;
+        view.setInt32(offset, Math.round(r.lat * 2147483648 / 180), true); offset += 4;
+        view.setInt32(offset, Math.round(r.lng * 2147483648 / 180), true); offset += 4;
+        view.setUint32(offset, Math.round(((r.alt || 0) + 500) * 5), true); offset += 4;
+        bytes[offset++] = r.hr || 0;
+        bytes[offset++] = r.cadence || 0;
+        view.setUint32(offset, Math.round((r.dist || 0) * 100), true); offset += 4;
+      }
+
+      // Write FIT 14-byte Header
+      const dataSize = offset - 14;
+      view.setUint8(0, 14);
+      view.setUint8(1, 0x20);
+      view.setUint16(2, 21192, true);
+      view.setUint32(4, dataSize, true);
+      bytes[8] = 46; bytes[9] = 70; bytes[10] = 73; bytes[11] = 84;
+      const headerCrc = calcFitCrc(bytes, 0, 12);
+      view.setUint16(12, headerCrc, true);
+
+      // Compute File CRC16
+      const fileCrc = calcFitCrc(bytes, 0, offset);
+      view.setUint16(offset, fileCrc, true);
+      offset += 2;
+
+      return buffer.slice(0, offset);
+    }
+
+    // CRC-16 a Haversine — delegují na sdílený modul shared/fit-core.js
+    function calcFitCrc(bytes, start, end) { return _calcFitCrc(bytes, start, end); }
+    function calcHaversine(lat1, lon1, lat2, lon2) { return _calcHaversine(lat1, lon1, lat2, lon2); }
+
+    async function downloadFitFile() {
+      const buffer = await buildRepairedFitBinary();
+      const blob = new Blob([buffer], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Garmin_Repaired_Activity.fit';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadGpxFile() {
+      let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Garmin FIT Repair Studio">\n  <trk>\n    <name>Repaired Activity</name>\n    <trkseg>\n`;
+      records.forEach(r => {
+        const dt = new Date((r.timestamp + GARMIN_EPOCH_OFFSET) * 1000).toISOString();
+        gpx += `      <trkpt lat="${r.lat}" lon="${r.lng}"><ele>${r.alt || 0}</ele><time>${dt}</time></trkpt>\n`;
+      });
+      gpx += `    </trkseg>\n  </trk>\n</gpx>`;
+
+      const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Garmin_Repaired_Activity.gpx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function formatSeconds(secs) {
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = secs % 60;
+      return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+  </script>
+</body>
+</html>

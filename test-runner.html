@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>FIT Parser Test Runner</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #eee; padding: 20px; }
+    .success { color: #4ade80; }
+    .error { color: #f87171; }
+    .info { color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <h1>Testing FIT Parser</h1>
+  <div id="log"></div>
+  <script type="module">
+    import { parseFitBinary, calcHaversine, calcFitCrc } from './shared/fit-core.js';
+
+    function log(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = type;
+      el.innerText = msg;
+      document.getElementById('log').appendChild(el);
+      console.log(msg);
+    }
+
+    async function runTests() {
+      try {
+        log('Načítám fit_files.json...');
+        const res = await fetch('fit_files.json');
+        const files = await res.json();
+        log(`Nalezeno souborů: ${files.length}`);
+
+        let okFull = 0, okPos = 0, failFull = 0, failPos = 0;
+        let totalRecords = 0;
+
+        for (const file of files) {
+          try {
+            const fitRes = await fetch(`FITs for tests/${file}`);
+            const arrayBuffer = await fitRes.arrayBuffer();
+
+            const full = parseFitBinary(arrayBuffer, { mode: 'full', filename: file });
+            const pos = parseFitBinary(arrayBuffer, { mode: 'position-only', filename: file });
+
+            const fullOk = full && full.records && full.records.length > 0;
+            const posOk = pos && pos.lat !== undefined;
+
+            if (fullOk) { okFull++; totalRecords += full.records.length; } else { failFull++; }
+            if (posOk) { okPos++; } else { failPos++; }
+
+            const fullStatus = fullOk ? '✅' : '❌';
+            const posStatus = posOk ? '✅' : '❌';
+            const recCount = fullOk ? full.records.length : 0;
+            log(`${fullStatus} full: ${recCount} rec | ${posStatus} pos | ${file}`);
+          } catch (e) {
+            log(`❌ ERROR ${file}: ${e.message}`, 'error');
+            failFull++; failPos++;
+          }
+        }
+
+        log('--------------------------------------------------');
+        log(`Výsledky Full mód: ${okFull}/${files.length} úspěšných`, failFull > 0 ? 'error' : 'success');
+        log(`Výsledky Position mód: ${okPos}/${files.length} úspěšných`, failPos > 0 ? 'error' : 'success');
+        log(`Celkem záznamů: ${totalRecords}`);
+
+        // Test Haversine
+        const praha = { lat: 50.0755, lng: 14.4378 };
+        const brno = { lat: 49.1951, lng: 16.6068 };
+        const dist = calcHaversine(praha.lat, praha.lng, brno.lat, brno.lng);
+        log(`Haversine test: ${(dist/1000).toFixed(1)} km - ${Math.abs(dist - 185000) < 5000 ? '✅' : '❌'}`);
+
+        // Test CRC-16
+        const testBytes = new Uint8Array([0x0E, 0x20, 0x18, 0x53, 0x00, 0x00, 0x00, 0x00, 0x2E, 0x46, 0x49, 0x54]);
+        const crc = calcFitCrc(testBytes, 0, 12);
+        log(`CRC-16 test: ${crc !== 0 ? '✅' : '❌'}`);
+
+        log('TEST_RUN_COMPLETED', 'info');
+
+      } catch (err) {
+        log(`Kritická chyba: ${err.message}`, 'error');
+        log('TEST_RUN_FAILED', 'error');
+      }
+    }
+
+    runTests();
+  </script>
+</body>
+</html>
