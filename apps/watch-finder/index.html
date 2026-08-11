@@ -1556,6 +1556,14 @@
 
       XLSX.writeFile(workbook, `Garmin_Vsechny_Starty_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
+    // Expose global functions for inline HTML handlers due to type="module"
+    window.setLanguage = setLanguage;
+    window.resetDropzoneView = resetDropzoneView;
+    window.exportTop5ToExcel = exportTop5ToExcel;
+    window.exportAllToExcel = exportAllToExcel;
+    window.openFolderSelector = openFolderSelector;
+    window.openFileSelector = openFileSelector;
+    window.loadDemoFile = loadDemoFile;
   </script>
 </body>
 </html>

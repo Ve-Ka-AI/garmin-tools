@@ -2941,6 +2941,25 @@
 
       XLSX.writeFile(wb, `Garmin_Comparator_Srovnani_${new Date().toISOString().slice(0, 10)}.xlsx`);
     }
+    // Expose global functions for inline HTML handlers due to type="module"
+    window.setLanguage = setLanguage;
+    window.setComparisonMode = setComparisonMode;
+    window.setXAxis = setXAxis;
+    window.setSpeedMode = setSpeedMode;
+    window.setHRMode = setHRMode;
+    window.setAlignMode = setAlignMode;
+    window.selectDirectFromWatch = selectDirectFromWatch;
+    window.clearAllActivities = clearAllActivities;
+    window.toggleActivitySelection = toggleActivitySelection;
+    window.onDistToleranceChange = onDistToleranceChange;
+    window.onGpsToleranceChange = onGpsToleranceChange;
+    window.onOverlapToleranceChange = onOverlapToleranceChange;
+    window.selectAllInCluster = selectAllInCluster;
+    window.hideChart = hideChart;
+    window.restoreChart = restoreChart;
+    window.toggleFullscreen = toggleFullscreen;
+    window.exportToExcel = exportToExcel;
+    window.processFileListWithPaths = processFileListWithPaths;
   </script>
 </body>
 </html>

@@ -2704,6 +2704,22 @@
       const s = secs % 60;
       return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
     }
+    // Expose global functions for inline HTML handlers due to type="module"
+    window.switchModule = switchModule;
+    window.openFolderSelector = openFolderSelector;
+    window.openFileSelector = openFileSelector;
+    window.loadDemoFile = loadDemoFile;
+    window.showExportModal = showExportModal;
+    window.setLanguage = setLanguage;
+    window.toggleDrawingTool = toggleDrawingTool;
+    window.undoLastDrawnWaypoint = undoLastDrawnWaypoint;
+    window.setMapViewMode = setMapViewMode;
+    window.setBasemap = setBasemap;
+    window.switchChartMode = switchChartMode;
+    window.closeExportModal = closeExportModal;
+    window.downloadGpxFile = downloadGpxFile;
+    window.downloadFitFile = downloadFitFile;
+    window.startDrawingForGap = startDrawingForGap;
   </script>
 </body>
 </html>
