@@ -220,16 +220,24 @@
     }
 
     .btn-export {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
       background: linear-gradient(135deg, #10b981, #059669);
       color: #ffffff;
       border: none;
+      padding: 0.55rem 1rem;
+      border-radius: 9999px;
       font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
       box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
     }
 
     .btn-export:hover {
-      background: linear-gradient(135deg, #34d399, #10b981);
       transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
     }
 
     .lang-switcher {
