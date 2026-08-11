@@ -898,7 +898,8 @@
   </header>
 
   <!-- Module Selector Tabs -->
-  <div style="padding: 1rem 1.5rem; background: var(--bg-dark); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border);">
+  <!-- Module Selector Tabs -->
+  <div id="moduleTabsContainer" style="display: none; padding: 1rem 1.5rem; background: var(--bg-dark); justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border);">
     <div class="module-tabs" style="display: inline-flex;">
       <button type="button" class="tab-btn active" id="tabModule1" onclick="switchModule(1)">
         <i class="fa-solid fa-scissors"></i> <span data-i18n="mod1Title">Odstraňovač klubka</span>
@@ -916,7 +917,8 @@
   </div>
 
   <!-- Workspace Container -->
-  <div class="app-workspace">
+  <!-- Workspace Container -->
+  <div class="app-workspace" id="appWorkspaceContainer" style="display: none;">
     
     <!-- Left Controls Sidebar -->
     <aside class="sidebar">
@@ -1104,11 +1106,11 @@
         </div>
       </div>
     </main>
+  </div>
 
-  <!-- Dropzone Empty State Overlay (now placed inside app-workspace so it doesn't cover the header) -->
-  <div class="dropzone-overlay" id="dropzoneOverlay">
-    <div class="dropzone" id="dropzoneBox" style="width:100%; max-width:800px; margin: 0 auto;" onclick="document.getElementById('fileInput').click()">
-      <input type="file" id="fileInput" accept=".fit" multiple style="display:none;" onchange="handleFileSelect(event)">
+  <!-- Upload Dropzone (Visible on initial load, matching Comparator) -->
+  <div class="dropzone" id="dropzoneBox" style="width:100%; max-width:800px; margin: auto; margin-top: 10vh;" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" accept=".fit" multiple style="display:none;" onchange="handleFileSelect(event)">
       <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" onchange="handleFolderSelect(event)">
 
       <div class="cloud-icon">
@@ -1151,9 +1153,7 @@
         <strong data-i18n="dropWarnMtpTitle" style="color: #f59e0b;">Důležitá poznámka pro USB hodinky (MTP):</strong>
         <span data-i18n="dropWarnMtpDesc">Systém Windows neumožňuje webovému prohlížeči přímé čtení z USB paměti hodinek bez uložení (vyvolá okno <em>Uložit jako</em>). Pro okamžité načtení desítek aktivit z hodinek <strong>překopírujte složku Activity z hodinek na disk PC</strong> a načtěte ji odtud tlačítkem <em>Vybrat složku</em>.</span>
       </div>
-    </div>
   </div>
-</div>
 
   <!-- Export Modal -->
   <div class="modal-backdrop" id="exportModal">
@@ -1611,8 +1611,12 @@
       records = item.records;
       fileIdHeader = item.fileIdHeader;
 
-      document.getElementById('dropzoneOverlay').style.opacity = '0';
-      setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+      document.getElementById('dropzoneBox').style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('dropzoneBox').style.display = 'none';
+        document.getElementById('appWorkspaceContainer').style.display = 'flex';
+        document.getElementById('moduleTabsContainer').style.display = 'flex';
+      }, 300);
       document.getElementById('btnExportHeader').disabled = false;
 
       document.getElementById('actName').innerText = item.filename;
@@ -1772,8 +1776,12 @@
         dist: curDist
       });
 
-      document.getElementById('dropzoneOverlay').style.opacity = '0';
-      setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+      document.getElementById('dropzoneBox').style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('dropzoneBox').style.display = 'none';
+        document.getElementById('appWorkspaceContainer').style.display = 'flex';
+        document.getElementById('moduleTabsContainer').style.display = 'flex';
+      }, 300);
       document.getElementById('btnExportHeader').disabled = false;
 
       document.getElementById('actName').innerText = 'Garmin Demo Aktivita (Klubko + Mezera)';
