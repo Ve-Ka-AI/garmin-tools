@@ -1097,9 +1097,7 @@
       </div>
     </main>
 
-  </div>
-
-  <!-- Dropzone Empty State Overlay -->
+  <!-- Dropzone Empty State Overlay (now placed inside app-workspace so it doesn't cover the header) -->
   <div class="dropzone-overlay" id="dropzoneOverlay">
     <div class="dropzone" id="dropzoneBox" style="width:100%; max-width:800px; margin: 0 auto;" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" accept=".fit" multiple style="display:none;" onchange="handleFileSelect(event)">
@@ -1113,34 +1111,41 @@
       </div>
       <div class="dropzone-title" data-i18n="dropTitle">Přetáhněte sem Garmin .FIT soubor nebo složku</div>
       <div class="dropzone-subtitle" data-i18n="dropSubtitle">Aplikace proskenuje všechny aktivity, odhalí klubka i zapomenuté restarty a opraví je přímo v prohlížeči.</div>
-      
+
       <div style="margin-top: 1.25rem; display: flex; justify-content: center; gap: 0.85rem; flex-wrap: wrap;">
-        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #38bdf8, #0284c7); box-shadow: 0 4px 14px rgba(56,189,248,0.35); border: none; color: white; padding: 0.65rem 1.4rem; border-radius: 9px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 14px rgba(16,185,129,0.35);" onclick="event.stopPropagation(); selectDirectFromWatch()" title="Přímo vybrat soubory FIT z paměti hodinek přes nová API prohlížeče">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="7"/>
+            <polyline points="12 9 12 12 13.5 13.5"/>
+            <path d="M16.5 3.5l1 2M7.5 3.5l-1 2M16.5 20.5l1-2M7.5 20.5l-1-2"/>
+          </svg>
+          <span data-i18n="btnSelectWatch">⌚ Načíst přímo z USB hodinek</span>
+        </button>
+
+        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #38bdf8, #0284c7); box-shadow: 0 4px 14px rgba(56,189,248,0.35);" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
-          <span data-i18n="btnSelectFile">Vybrat FIT soubor</span>
+          <span data-i18n="btnSelectFile">Vybrat .FIT soubory</span>
         </button>
-        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #818cf8, #4f46e5); box-shadow: 0 4px 14px rgba(129,140,248,0.35); border: none; color: white; padding: 0.65rem 1.4rem; border-radius: 9px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;" onclick="event.stopPropagation(); document.getElementById('folderInput').click()">
+
+        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #818cf8, #4f46e5); box-shadow: 0 4px 14px rgba(129,140,248,0.35);" onclick="event.stopPropagation(); document.getElementById('folderInput').click()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
-          <span data-i18n="btnLoadFolder">Načíst složku .FIT</span>
-        </button>
-        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 14px rgba(245,158,11,0.35); border: none; color: white; padding: 0.65rem 1.4rem; border-radius: 9px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;" onclick="event.stopPropagation(); loadDemoFile()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-          </svg>
-          <span data-i18n="btnDemo">Načíst Demo</span>
+          <span data-i18n="btnLoadFolder">Vybrat složku</span>
         </button>
       </div>
 
-      <div style="margin-top: 1rem; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.75rem; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto; font-size: 0.75rem; color: var(--text-muted);">
-        <span style="color: #f59e0b; font-weight: bold;">💡 Důležitá poznámka pro USB hodinky (MTP):</span> Systém Windows neumožňuje webovému prohlížeči přímé čtení z USB paměti hodinek bez uložení (vyvolá okna <i>Uložit jako</i>). Pro okamžité načtení desítek aktivit z hodinek <b>překopírujte složku Activity z hodinek na disk PC</b> a načtěte ji odtud tlačítkem <i>Načíst složku .FIT</i>.
+      <div class="mtp-warning" style="margin-top: 1rem; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.75rem; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto; font-size: 0.75rem; color: var(--text-muted);">
+        <i class="fa-solid fa-lightbulb" style="color:var(--accent-amber);"></i> 
+        <strong data-i18n="dropWarnMtpTitle" style="color: #f59e0b;">Důležitá poznámka pro USB hodinky (MTP):</strong>
+        <span data-i18n="dropWarnMtpDesc">Systém Windows neumožňuje webovému prohlížeči přímé čtení z USB paměti hodinek bez uložení (vyvolá okno <em>Uložit jako</em>). Pro okamžité načtení desítek aktivit z hodinek <strong>překopírujte složku Activity z hodinek na disk PC</strong> a načtěte ji odtud tlačítkem <em>Vybrat složku</em>.</span>
       </div>
     </div>
   </div>
+</div>
 
   <!-- Export Modal -->
   <div class="modal-backdrop" id="exportModal">
@@ -1452,6 +1457,21 @@
     function openFileSelector() {
       document.getElementById('fileInput').click();
     }
+
+    async function selectDirectFromWatch() {
+      try {
+        if (!('showDirectoryPicker' in window)) {
+          alert('Tento prohlížeč nepodporuje přímé načítání z připojených zařízení. Použijte klasický výběr souborů.');
+          return;
+        }
+        alert('TIP:\n1. V levém panelu vyberte své hodinky (připojené přes USB).\n2. Najděte složku: Primary -> GARMIN -> Activity\n3. Vyberte tuto složku a potvrďte.');
+        const dirHandle = await window.showDirectoryPicker();
+        await scanDirectoryRecursively(dirHandle);
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    window.selectDirectFromWatch = selectDirectFromWatch;
 
     function openFolderSelector() {
       if ('showDirectoryPicker' in window) {
