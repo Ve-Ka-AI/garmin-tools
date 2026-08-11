@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Garmin Activity Comparator</title>
+  <link rel="icon" type="image/svg+xml" href="../../shared/favicon.svg">
   <meta name="description" content="Pokročilé klientské porovnávání a analytická vizualizace více Garmin .fit aktivit najednou.">
 
   <!-- Google Fonts: Inter & Outfit -->
@@ -902,23 +903,23 @@
     </header>
 
     <!-- Top-Level Mode Switcher Bar -->
-    <div class="mode-switcher-card" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 0.75rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.25);">
+    <div id="modeSwitcher" class="mode-switcher-card" style="display: none; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 0.75rem 1.25rem; margin-bottom: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.25);">
       <div style="display: flex; align-items: center; gap: 0.6rem;">
         <span style="font-weight: 700; font-size: 0.92rem; color: #f8fafc;">Typ porovnání:</span>
       </div>
 
       <div class="btn-segmented" style="background: rgba(0, 0, 0, 0.4); padding: 4px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
-        <button class="seg-btn active" id="btnModeJoint" onclick="setComparisonMode('joint')" style="padding: 0.5rem 1.1rem; font-size: 0.88rem; font-weight: 600; border-radius: 6px;">
+        <button class="seg-btn" id="btnModeJoint" onclick="setComparisonMode('joint')" style="padding: 0.5rem 1.1rem; font-size: 0.88rem; font-weight: 600; border-radius: 6px;">
           👥 Společná aktivita <span style="font-size: 0.75rem; opacity: 0.75; font-weight: 400;">(Více osob v 1 čase)</span>
         </button>
-        <button class="seg-btn" id="btnModeIdentical" onclick="setComparisonMode('identical')" style="padding: 0.5rem 1.1rem; font-size: 0.88rem; font-weight: 600; border-radius: 6px;">
+        <button class="seg-btn active" id="btnModeIdentical" onclick="setComparisonMode('identical')" style="padding: 0.5rem 1.1rem; font-size: 0.88rem; font-weight: 600; border-radius: 6px;">
           🔄 Moje totožné aktivity v čase <span style="font-size: 0.75rem; opacity: 0.75; font-weight: 400;">(Historie)</span>
         </button>
       </div>
     </div>
 
     <!-- Global Controls Toolbar -->
-    <div class="toolbar-card">
+    <div class="toolbar-card" id="toolbarCard" style="display: none;">
       <div class="toggle-group">
         <span class="toggle-label" id="lblXAxis">Osa X (Grafy):</span>
         <div class="btn-segmented">
@@ -962,14 +963,6 @@
 
       <div class="toggle-group" id="filtersGroup" style="display:none; flex-wrap:wrap; gap:0.9rem; align-items:center; background:rgba(255,255,255,0.03); padding:0.3rem 0.7rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); width: 100%;">
         <div style="display:flex; align-items:center; gap:0.4rem;">
-          <span class="toggle-label">Od:</span>
-          <input type="date" id="filterDateFrom" onchange="applyFilters()" style="background:var(--bg-dark); color:var(--text-main); border:1px solid var(--card-border); border-radius:4px; padding:0.2rem; font-family:'Inter', sans-serif;">
-        </div>
-        <div style="display:flex; align-items:center; gap:0.4rem;">
-          <span class="toggle-label">Do:</span>
-          <input type="date" id="filterDateTo" onchange="applyFilters()" style="background:var(--bg-dark); color:var(--text-main); border:1px solid var(--card-border); border-radius:4px; padding:0.2rem; font-family:'Inter', sans-serif;">
-        </div>
-        <div style="display:flex; align-items:center; gap:0.4rem;">
           <span class="toggle-label">Druh:</span>
           <details class="multiselect" id="filterTypeSelect">
             <summary>Všechny sporty</summary>
@@ -986,6 +979,14 @@
               <!-- Dynamically populated -->
             </div>
           </details>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span class="toggle-label">Od:</span>
+          <input type="date" id="filterDateFrom" onchange="applyFilters()" style="background:var(--bg-dark); color:var(--text-main); border:1px solid var(--card-border); border-radius:4px; padding:0.2rem; font-family:'Inter', sans-serif;">
+        </div>
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span class="toggle-label">Do:</span>
+          <input type="date" id="filterDateTo" onchange="applyFilters()" style="background:var(--bg-dark); color:var(--text-main); border:1px solid var(--card-border); border-radius:4px; padding:0.2rem; font-family:'Inter', sans-serif;">
         </div>
       </div>
 
@@ -1068,7 +1069,7 @@
     </div>
 
     <!-- Main Dashboard Layout -->
-    <div class="dashboard-layout" id="dashboardLayout">
+    <div class="dashboard-layout" id="dashboardLayout" style="display: none;">
 
       <!-- Left Sidebar: Matching Groups & Activity Selector -->
       <div class="sidebar">
@@ -1118,6 +1119,14 @@
 
       <!-- Main Panel: Map, Multi-Charts Grid & Comparison Matrix -->
       <div class="dashboard-main">
+      
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 style="margin:0; font-size: 1.2rem; font-weight: 600;">Data a telemetrie</h2>
+          <div style="display:flex; align-items:center; gap:0.5rem; background:rgba(255,255,255,0.05); padding: 4px; border-radius: 8px; border: 1px solid var(--card-border);">
+            <button id="btnXAxisDistance" class="btn-action-sm active" onclick="setXAxis('geodist')">Osa X: Vzdálenost (km)</button>
+            <button id="btnXAxisTime" class="btn-action-sm" onclick="setXAxis('time')">Osa X: Čas (min)</button>
+          </div>
+        </div>
 
         <!-- Leaflet Map Card -->
         <div class="map-card card-fullscreen-target" id="cardMap">
@@ -1242,6 +1251,42 @@
             <div class="chart-wrapper"><canvas id="chartGpsQuality"></canvas></div>
           </div>
 
+          <!-- Chart 10: Výkon & Energie -->
+          <div class="chart-card card-fullscreen-target" id="cardChartPower">
+            <div class="chart-header-row">
+              <div class="chart-title" id="titlePowerChart"><span style="color: #fb923c;">●</span> 10. Výkon (W) a Výdej Energie (kJ)</div>
+              <div style="display:flex; gap:0.4rem;">
+                <button class="btn-action-sm" onclick="hideChart('power')">👁️ Skrýt</button>
+                <button class="btn-action-sm" onclick="toggleFullscreen('cardChartPower')">⛶ Celá obrazovka</button>
+              </div>
+            </div>
+            <div class="chart-wrapper"><canvas id="chartPower"></canvas></div>
+          </div>
+
+          <!-- Chart 11: Kadence -->
+          <div class="chart-card card-fullscreen-target" id="cardChartCadence">
+            <div class="chart-header-row">
+              <div class="chart-title" id="titleCadenceChart"><span style="color: #8b5cf6;">●</span> 11. Kadence (ot./min)</div>
+              <div style="display:flex; gap:0.4rem;">
+                <button class="btn-action-sm" onclick="hideChart('cadence')">👁️ Skrýt</button>
+                <button class="btn-action-sm" onclick="toggleFullscreen('cardChartCadence')">⛶ Celá obrazovka</button>
+              </div>
+            </div>
+            <div class="chart-wrapper"><canvas id="chartCadence"></canvas></div>
+          </div>
+
+          <!-- Chart 12: L/R Balance -->
+          <div class="chart-card card-fullscreen-target" id="cardChartLrBalance">
+            <div class="chart-header-row">
+              <div class="chart-title" id="titleLrBalanceChart"><span style="color: #ec4899;">●</span> 12. Rovnováha L/P (%)</div>
+              <div style="display:flex; gap:0.4rem;">
+                <button class="btn-action-sm" onclick="hideChart('lrBalance')">👁️ Skrýt</button>
+                <button class="btn-action-sm" onclick="toggleFullscreen('cardChartLrBalance')">⛶ Celá obrazovka</button>
+              </div>
+            </div>
+            <div class="chart-wrapper"><canvas id="chartLrBalance"></canvas></div>
+          </div>
+
         </div>
 
         <!-- Hidden Charts Restore Control Bar -->
@@ -1286,6 +1331,8 @@
   <script type="module">
     // --- Import sdíleného FIT parseru ---
     import { parseFitBinary, calcHaversine, garminTimestampToDate, GARMIN_EPOCH_OFFSET, SEMICIRCLE_TO_DEG } from '../../shared/fit-core.js';
+    import { getResolvedDeviceName, setDeviceAlias, getDeviceAliasData } from '../../shared/device-alias.js';
+    import { GARMIN_KNOWN_DERIVATIVES, getOfficialDeviceName } from '../../shared/garmin-devices.js';
 
     // --- i18n Translations ---
     const i18n = {
@@ -1423,7 +1470,7 @@
       }
     };
 
-    // --- State Variables ---
+    // --- State variables ---
     let currentLang = 'cz';
     let xAxisMode = 'geodist';
     let speedMode = 'speed';
@@ -1433,18 +1480,28 @@
     let allActivities = [];
     let selectedIndices = [];
     let suggestedGroups = [];
-
-    let hiddenCharts = {
-      alt: false,
-      speed: false,
-      hr: false,
-      temp: false,
-      stamina: false,
-      grit: false,
-      flow: false,
-      battery: false,
-      gpsQuality: false
-    };
+    let routeClusters = [];
+    let hiddenCharts = { alt: false, speed: false, hr: false, temp: false, stamina: false, grit: false, flow: false, battery: false, gpsQuality: false, power: false, cadence: false, lrBalance: false };
+    
+    // UI Event handlers must be exposed to window because this is a module
+    window.setLanguage = setLanguage;
+    window.setComparisonMode = setComparisonMode;
+    window.setXAxis = setXAxis;
+    window.setSpeedMode = setSpeedMode;
+    window.setHRMode = setHRMode;
+    window.onDistToleranceChange = onDistToleranceChange;
+    window.onGpsToleranceChange = onGpsToleranceChange;
+    window.onOverlapToleranceChange = onOverlapToleranceChange;
+    window.applyFilters = applyFilters;
+    window.setAlignMode = setAlignMode;
+    window.handleFileSelect = handleFileSelect;
+    window.selectDirectFromWatch = selectDirectFromWatch;
+    window.clearAllActivities = clearAllActivities;
+    window.toggleFullscreen = toggleFullscreen;
+    window.hideChart = hideChart;
+    window.restoreChart = restoreChart;
+    window.toggleActivitySelection = toggleActivitySelection;
+    window.selectAllInCluster = selectAllInCluster;
 
     const TRACK_COLORS = ['#38bdf8', '#c084fc', '#34d399', '#fbbf24', '#f43f5e'];
 
@@ -1457,23 +1514,7 @@
 
     let chartAlt = null, chartSpeed = null, chartHR = null, chartTemp = null;
     let chartStamina = null, chartGrit = null, chartFlow = null, chartBattery = null, chartGpsQuality = null;
-
-    // --- Garmin Product ID Mapping ---
-    const GARMIN_PRODUCTS = {
-      3907: "Garmin Quatix 7X Sapphire Solar",
-      4374: "Garmin Fēnix 7S Solar",
-      3843: "Garmin Fēnix 7 Standard",
-      4125: "Garmin Forerunner 255",
-      3589: "Garmin Venu 3",
-      4105: "Garmin Epix Gen 2",
-      3638: "Garmin Edge 1040"
-    };
-
-    function getDeviceName(productID, manufacturerID) {
-      if (GARMIN_PRODUCTS[productID]) return GARMIN_PRODUCTS[productID];
-      if (manufacturerID === 1) return `Garmin Watch (Product ${productID || 'N/A'})`;
-      return `Sports Device (${productID || 'Generic'})`;
-    }
+    let chartPower = null, chartCadence = null, chartLrBalance = null;
 
     // --- Hide / Restore Charts logic ---
     function hideChart(key) {
@@ -1511,7 +1552,10 @@
         grit: '6. Obtížnost',
         flow: '7. Plynulost',
         battery: '8. Baterie [ConnectIQ]',
-        gpsQuality: '9. Kvalita GPS [ConnectIQ]'
+        gpsQuality: '9. Kvalita GPS [ConnectIQ]',
+        power: '10. Výkon & Energie',
+        cadence: '11. Kadence',
+        lrBalance: '12. L/P Balance'
       };
 
       hiddenKeys.forEach(k => {
@@ -1592,8 +1636,31 @@
 
     function setXAxis(mode) {
       xAxisMode = mode;
-      document.getElementById('btnXGeoDist').classList.toggle('active', mode === 'geodist');
-      document.getElementById('btnXDist').classList.toggle('active', mode === 'distance');
+      const btnGeo = document.getElementById('btnXAxisDistance');
+      const btnTime = document.getElementById('btnXAxisTime');
+      if (btnGeo && btnTime) {
+        if (mode === 'geodist') {
+          btnGeo.classList.add('active');
+          btnGeo.style.background = 'var(--accent-blue)';
+          btnGeo.style.color = 'white';
+          btnGeo.style.borderColor = 'var(--accent-blue)';
+          
+          btnTime.classList.remove('active');
+          btnTime.style.background = '';
+          btnTime.style.color = '';
+          btnTime.style.borderColor = '';
+        } else {
+          btnTime.classList.add('active');
+          btnTime.style.background = 'var(--accent-blue)';
+          btnTime.style.color = 'white';
+          btnTime.style.borderColor = 'var(--accent-blue)';
+          
+          btnGeo.classList.remove('active');
+          btnGeo.style.background = '';
+          btnGeo.style.color = '';
+          btnGeo.style.borderColor = '';
+        }
+      }
       if (selectedIndices.length > 0) updateCharts();
     }
 
@@ -1660,7 +1727,6 @@
     let routeDistTolerancePct = 5;
     let routeGpsToleranceMeters = 10;
     let routeOverlapTolerancePct = 90;
-    let routeClusters = [];
 
     function onDistToleranceChange(val) {
       routeDistTolerancePct = parseInt(val, 10);
@@ -1722,44 +1788,92 @@
     }
 
     // --- Garmin Sport ID Mapping ---
+    const SPORT_INFO = {
+      0:  { name: 'Obecná aktivita', icon: '⏱️' },
+      1:  { name: 'Běh', icon: '🏃' },
+      2:  { name: 'Cyklistika', icon: '🚴' },
+      3:  { name: 'Přechod (Triathlon)', icon: '🔄' },
+      4:  { name: 'Fitness zařízení', icon: '🏋️' },
+      5:  { name: 'Plavání', icon: '🏊' },
+      6:  { name: 'Basketbal', icon: '🏀' },
+      7:  { name: 'Fotbal', icon: '⚽' },
+      8:  { name: 'Tenis', icon: '🎾' },
+      9:  { name: 'Americký fotbal', icon: '🏈' },
+      10: { name: 'Trénink', icon: '💪' },
+      11: { name: 'Chůze', icon: '🚶' },
+      12: { name: 'Běžky', icon: '⛷️' },
+      13: { name: 'Sjezdové lyžování', icon: '⛷️' },
+      14: { name: 'Snowboarding', icon: '🏂' },
+      15: { name: 'Veslování', icon: '🚣' },
+      16: { name: 'Horolezectví', icon: '🧗' },
+      17: { name: 'Turistika', icon: '🥾' },
+      18: { name: 'Multisport', icon: '🏅' },
+      19: { name: 'Kanoistika', icon: '🛶' },
+      20: { name: 'Létání', icon: '🛩️' },
+      21: { name: 'E-kolo', icon: '⚡🚴' },
+      22: { name: 'Motocykl', icon: '🏍️' },
+      23: { name: 'Loďka', icon: '⛵' },
+      24: { name: 'Řízení', icon: '🚗' },
+      25: { name: 'Golf', icon: '⛳' },
+      26: { name: 'Rogalo', icon: '🪂' },
+      27: { name: 'Jízda na koni', icon: '🏇' },
+      28: { name: 'Lov', icon: '🎯' },
+      29: { name: 'Rybaření', icon: '🎣' },
+      30: { name: 'In-line bruslení', icon: '⛸️' },
+      31: { name: 'Lezení', icon: '🧗' },
+      32: { name: 'Jachting', icon: '⛵' },
+      33: { name: 'Bruslení', icon: '⛸️' },
+      34: { name: 'Paragliding', icon: '🪂' },
+      35: { name: 'Sněžnice', icon: '🥾' },
+      36: { name: 'Sněžný skútr', icon: '🏔️' },
+      37: { name: 'SUP Paddleboard', icon: '🏄' },
+      38: { name: 'Surfování', icon: '🏄' },
+      39: { name: 'Wakeboarding', icon: '🏄' },
+      40: { name: 'Vodní lyže', icon: '🎿' },
+      41: { name: 'Kajakování', icon: '🛶' },
+      42: { name: 'Rafting', icon: '🚣' },
+      43: { name: 'Windsurfing', icon: '🏄' },
+      44: { name: 'Kitesurfing', icon: '🪁' },
+      45: { name: 'Taktický', icon: '🎖️' },
+      46: { name: 'Jumpmaster', icon: '🪂' },
+      47: { name: 'Box', icon: '🥊' },
+      48: { name: 'Schodování', icon: '🪜' },
+      53: { name: 'Potápění', icon: '🤿' },
+      62: { name: 'Jóga', icon: '🧘' },
+      63: { name: 'Pilates', icon: '🤸' },
+      65: { name: 'HIIT', icon: '💥' },
+    };
+    const SUBSPORT_TRAINING = {
+      15: 'Kardio',
+      19: 'Silový trénink',
+      20: 'Flexibilita',
+      26: 'Kardio (Indoor)',
+      43: 'Pilates',
+      44: 'Jóga',
+    };
     function getSportInfo(sportId, subSportId, lang) {
-      const isCz = (lang === 'cz');
-      switch (sportId) {
-        case 1: return { sportId: 1, name: isCz ? 'Běh' : 'Running', icon: '🏃' };
-        case 2: return { sportId: 2, name: isCz ? 'Cyklistika' : 'Cycling', icon: '🚴' };
-        case 5: return { sportId: 5, name: isCz ? 'Plavání' : 'Swimming', icon: '🏊' };
-        case 11: return { sportId: 11, name: isCz ? 'Turistika' : 'Hiking', icon: '🥾' };
-        case 17: return { sportId: 17, name: isCz ? 'Kardio / Sauna' : 'Cardio / Sauna', icon: '🧘' };
-        default: return { sportId: sportId || 0, name: isCz ? 'Aktivita' : 'Activity', icon: '⏱️' };
+      if (sportId === 10 && SUBSPORT_TRAINING[subSportId]) {
+        return { sportId, subSportId, name: SUBSPORT_TRAINING[subSportId], icon: '💪' };
       }
+      const info = SPORT_INFO[sportId];
+      if (info) return { sportId, subSportId, name: info.name, icon: info.icon };
+      return { sportId: sportId || 0, subSportId, name: `Sport ${sportId || '?'}`, icon: '⏱️' };
     }
 
     // --- FIT Parser Wrapper — deleguje na sdílený modul shared/fit-core.js ---
     function parseFitNative(arrayBuffer, filePathName) {
       try {
         const result = parseFitBinary(arrayBuffer, { mode: 'full', filename: filePathName });
-        console.log("parseFitBinary returned:", result);
-        if (!result || !result.records || result.records.length === 0) {
-          console.warn("parseFitNative returning null because result is empty:", result);
-          return null;
-        }
+        if (!result || !result.records || result.records.length === 0) return null;
 
         const { records: rawRecords, deviceInfos, sessionData, fileId, fieldDescriptions } = result;
 
-        // Konverze raw garmin timestamps na Date objekty
         const records = rawRecords.map(r => {
           const rec = Object.assign({}, r);
           if (rec.timestamp) rec.timestamp = garminTimestampToDate(rec.timestamp);
           return rec;
         });
-        let lastRecordTimestamp = null;
-        for (const rec of records) {
-          if (rec.timestamp) lastRecordTimestamp = rec.timestamp;
-        }
 
-
-
-        // Cumulative metrics
         let calcDist = 0;
         let asc = 0, desc = 0;
         let activeSec = 0;
@@ -1800,8 +1914,6 @@
         }
 
         const rawDistKm = (records[records.length - 1].dist || calcDist) / 1000.0;
-
-        // Garmin Session Summary
         const officialElapsedSec = (sessionData && sessionData[7]) ? (sessionData[7] / 1000.0) : records[records.length - 1].elapsedSec;
         const officialTimerSec = (sessionData && sessionData[8]) ? (sessionData[8] / 1000.0) : activeSec;
         const officialDistanceKm = (sessionData && sessionData[9]) ? (sessionData[9] / 100000.0) : rawDistKm;
@@ -1809,7 +1921,6 @@
         const officialDescent = (sessionData && (sessionData[23] || sessionData[12])) ? (sessionData[23] || sessionData[12]) : Math.round(desc);
         const officialAvgSpeed = (sessionData && (sessionData[124] || sessionData[14])) ? ((sessionData[124] || sessionData[14]) / 1000.0 * 3.6) : (officialDistanceKm / (officialTimerSec / 3600.0));
 
-        // Frequency & Smart Recording
         const deltas = [];
         for (let i = 1; i < records.length; i++) {
           const t1 = (records[i].timestamp && typeof records[i].timestamp.getTime === 'function') ? records[i].timestamp.getTime() : null;
@@ -1823,8 +1934,8 @@
         const onesCount = deltas.filter(d => Math.abs(d - 1) < 0.2).length;
         const percent1s = deltas.length > 0 ? (onesCount / deltas.length * 100) : 100;
 
-        const rawSport = (sessionData && sessionData[0] !== undefined) ? sessionData[0] : 0;
-        const rawSubSport = (sessionData && sessionData[1] !== undefined) ? sessionData[1] : 0;
+        const rawSport = (sessionData && sessionData[5] !== undefined) ? sessionData[5] : 0;
+        const rawSubSport = (sessionData && sessionData[6] !== undefined) ? sessionData[6] : 0;
         const sportInfo = getSportInfo(rawSport, rawSubSport, currentLang);
 
         const hasTempe = deviceInfos.some(d => d.deviceType === 25 || d.antplusDeviceType === 25);
@@ -1836,7 +1947,7 @@
 
         const cleanName = filePathName.split(/[/\\]/).pop().replace(/\.fit$/i, '');
         const pathParts = filePathName.split(/[/\\]/);
-        const devName = getDeviceName(fileId.product, fileId.manufacturer);
+        const devName = getResolvedDeviceName(fileId.product, fileId.manufacturer, fileId.serialNumber);
         const userTag = (pathParts.length > 1 && pathParts[0] !== cleanName) ? pathParts[0] : (devName || 'Uživatel');
 
         return {
@@ -1844,6 +1955,7 @@
           user: userTag,
           productID: fileId.product,
           manufacturerID: fileId.manufacturer,
+          serialNumber: fileId.serialNumber,
           deviceName: devName,
           swVersion: deviceInfos[0]?.softwareVersion || 'N/A',
           records: records,
@@ -1870,7 +1982,6 @@
           deviceInfos: deviceInfos
         };
       } catch (e) {
-        console.error("Parse native FIT error:", e);
         return null;
       }
     }
@@ -1881,6 +1992,26 @@
       suggestedGroups = [];
       document.getElementById('dashboardLayout').style.display = 'none';
       document.getElementById('statusBar').style.display = 'none';
+      document.getElementById('modeSwitcher').style.display = 'none';
+      document.getElementById('toolbarCard').style.display = 'none';
+      
+      const fileIn = document.getElementById('fileInputFiles');
+      if (fileIn) {
+        const clone = fileIn.cloneNode(true);
+        clone.value = '';
+        fileIn.parentNode.replaceChild(clone, fileIn);
+      }
+      
+      const folderIn = document.getElementById('fileInputFolder');
+      if (folderIn) {
+        const clone = folderIn.cloneNode(true);
+        clone.value = '';
+        folderIn.parentNode.replaceChild(clone, folderIn);
+      }
+      
+      const dz = document.getElementById('dropzone');
+      if (dz) dz.style.display = 'block';
+      
       if (mapPolylineGroup) mapPolylineGroup.clearLayers();
       if (mapMarkerGroup) mapMarkerGroup.clearLayers();
     }
@@ -1917,13 +2048,12 @@
         if (statusPercent) statusPercent.innerText = `${pct} %`;
         if (progressBarFill) progressBarFill.style.width = `${pct}%`;
 
-        // Yield execution to browser main thread so spinner and progress bar repaint smoothly
         await new Promise(r => setTimeout(r, 0));
 
         try {
           const buffer = await file.arrayBuffer();
           if (!buffer || buffer.byteLength === 0) {
-            if (statusSubtext) statusSubtext.innerText = `Chyba: Soubor ${fileName} je prázdný (0 B). Zkontrolujte prosím lokální stažení.`;
+            if (statusSubtext) statusSubtext.innerText = `Chyba: Soubor ${fileName} je prázdný (0 B).`;
             continue;
           }
           const parsed = parseFitNative(buffer, pathName);
@@ -1941,12 +2071,9 @@
               allActivities.push(parsed);
               loadedCount++;
             }
-          } else {
-            console.warn("parseFitNative returned null or 0 records for:", fileName);
           }
         } catch (err) {
-          console.error("Error processing file:", fileName, err);
-          if (statusSubtext) statusSubtext.innerText = `Detail chyby u ${fileName}: ${err.message}`;
+          console.error(err);
         }
       }
 
@@ -1954,11 +2081,11 @@
       statusCheck.style.display = 'flex';
       
       if (allActivities.length > 0) {
-        statusText.innerText = `Úspěšně načteno a zpracováno ${allActivities.length} FIT aktivit v historii.`;
-        if (statusSubtext) statusSubtext.innerText = `Lícování tras a vytváření odkazů dokončeno.`;
-      } else {
-        statusText.innerText = `⚠️ Z vybraných ${fileEntries.length} souborů se nepodařilo vytvořit žádné aktivity.`;
-        if (statusSubtext) statusSubtext.innerText = `Použijte prosím tlačítko "Vybrat .FIT soubory" pro přímý výběr jednotlivých .FIT souborů.`;
+        statusText.innerText = `Úspěšně načteno a zpracováno ${allActivities.length} FIT aktivit.`;
+        document.getElementById('dashboardLayout').style.display = 'grid';
+        document.getElementById('modeSwitcher').style.display = 'flex';
+        document.getElementById('toolbarCard').style.display = 'flex';
+        document.getElementById('dropzone').style.display = 'none';
       }
       if (statusPercent) statusPercent.innerText = `100 %`;
       if (progressBarFill) progressBarFill.style.width = `100%`;
@@ -1968,14 +2095,6 @@
       }
 
       computeMatchingGroups();
-
-      if (selectedIndices.length === 0 && allActivities.length > 0) {
-        if (suggestedGroups.length > 0) {
-          selectedIndices = [...suggestedGroups[0].indices];
-        } else {
-          selectedIndices = allActivities.slice(0, Math.min(5, allActivities.length)).map((_, idx) => idx);
-        }
-      }
 
       if (allActivities.length > 0) {
         document.getElementById('dashboardLayout').style.display = 'grid';
@@ -2010,7 +2129,7 @@
                 fileEntries.push({ file: file, path: file.name });
               }
             } catch (err) {
-              console.error("Error reading file handle:", err);
+              console.error(err);
             }
           }
 
@@ -2019,7 +2138,6 @@
           }
         } catch (err) {
           if (err.name !== 'AbortError') {
-            console.error("showOpenFilePicker error:", err);
             document.getElementById('fileInputFiles').click();
           }
         }
@@ -2036,17 +2154,9 @@
       try { e.target.value = ''; } catch(err){}
     }
 
-    // --- Airtight Global Drag & Drop Prevention (Prevents Chrome opening files in new tabs) ---
+    // --- Airtight Global Drag & Drop Prevention ---
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
       window.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }, false);
-      document.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }, false);
-      document.body.addEventListener(eventName, (e) => {
         e.preventDefault();
         e.stopPropagation();
       }, false);
@@ -2115,7 +2225,7 @@
             fileEntries.push({ file: file, path: fullPath });
           }
         } catch (err) {
-          console.error("Error reading file entry:", entry.name, err);
+          console.error(err);
         }
       } else if (entry.isDirectory) {
         const dirReader = entry.createReader();
@@ -2135,7 +2245,7 @@
       }
     }
 
-    let activeComparisonMode = 'joint'; // 'joint' = Společná aktivita, 'identical' = Moje totožné aktivity v čase
+    let activeComparisonMode = 'identical';
 
     function setComparisonMode(mode) {
       activeComparisonMode = mode;
@@ -2155,19 +2265,17 @@
       }
     }
 
-    const sportNames = { 1:'Běh', 2:'Cyklistika', 5:'Plavání', 11:'Fitness', 17:'Turistika', 8:'Chůze' };
-
     function populateFilters() {
-      const typeSet = new Set();
+      const typeMap = new Map();
       const deviceMap = new Map();
 
       allActivities.forEach(a => {
-        let sId = 'Neznámý';
-        if (a.sessionData && a.sessionData['5'] !== undefined) sId = String(a.sessionData['5']);
-        typeSet.add(sId);
+        const sName = a.sportName || 'Neznámý';
+        const sIcon = a.sportIcon || '⏱️';
+        if (!typeMap.has(sName)) typeMap.set(sName, { icon: sIcon, name: sName });
 
-        const model = (a.fileId && a.fileId.product) || 'Neznámé zařízení';
-        const sn = (a.fileId && a.fileId.serialNumber) || 0;
+        const model = a.deviceName || 'Neznámé zařízení';
+        const sn = a.serialNumber || 0;
         const snStr = String(sn).padStart(3, '0').slice(-3);
         const devKey = `${model}|${snStr}`;
         deviceMap.set(devKey, { model, snStr, name: `${model} (SN: ...${snStr})` });
@@ -2176,10 +2284,9 @@
       const typesEl = document.getElementById('filterTypeOptions');
       if (typesEl) {
         typesEl.innerHTML = '';
-        Array.from(typeSet).sort().forEach(sId => {
+        Array.from(typeMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'cs')).forEach(t => {
           const label = document.createElement('label');
-          const name = sportNames[sId] || `Sport ${sId}`;
-          label.innerHTML = `<input type="checkbox" value="${sId}" onchange="applyFilters()" checked> ${name}`;
+          label.innerHTML = `<input type="checkbox" value="${t.name}" onchange="applyFilters()" checked> ${t.icon} ${t.name}`;
           typesEl.appendChild(label);
         });
       }
@@ -2189,14 +2296,169 @@
         devsEl.innerHTML = '';
         Array.from(deviceMap.values()).sort((a,b) => a.name.localeCompare(b.name)).forEach(d => {
           const label = document.createElement('label');
-          label.innerHTML = `<input type="checkbox" value="${d.model}|${d.snStr}" onchange="applyFilters()" checked> ${d.name}`;
+          label.style.display = 'flex';
+          label.style.alignItems = 'center';
+          
+          const textSpan = document.createElement('span');
+          textSpan.innerHTML = `<input type="checkbox" value="${d.model}|${d.snStr}" onchange="applyFilters()" checked> ${d.name}`;
+          
+          const editBtn = document.createElement('button');
+          editBtn.innerHTML = '✏️';
+          editBtn.title = 'Upravit model';
+          editBtn.style.background = 'none';
+          editBtn.style.border = 'none';
+          editBtn.style.cursor = 'pointer';
+          editBtn.style.padding = '0';
+          editBtn.style.marginLeft = '8px';
+          editBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openDeviceAliasModal(d.model, d.snStr);
+          };
+          
+          label.appendChild(textSpan);
+          label.appendChild(editBtn);
           devsEl.appendChild(label);
         });
       }
+      updateMultiselectSummaries();
+    }
+
+    function updateMultiselectSummaries() {
+      const typeInputs = document.querySelectorAll('#filterTypeOptions input[type="checkbox"]');
+      const typeChecked = Array.from(typeInputs).filter(i => i.checked).length;
+      const typeSummary = document.querySelector('#filterTypeSelect summary');
+      if (typeSummary && typeInputs.length > 0) {
+        if (typeChecked === typeInputs.length || typeChecked === 0) {
+          typeSummary.textContent = 'Všechny sporty';
+        } else if (typeChecked === 1) {
+          typeSummary.textContent = 'Vybrán 1';
+        } else {
+          typeSummary.textContent = `Vybráno ${typeChecked}`;
+        }
+      }
+
+      const devInputs = document.querySelectorAll('#filterDeviceOptions input[type="checkbox"]');
+      const devChecked = Array.from(devInputs).filter(i => i.checked).length;
+      const devSummary = document.querySelector('#filterDeviceSelect summary');
+      if (devSummary && devInputs.length > 0) {
+        if (devChecked === devInputs.length || devChecked === 0) {
+          devSummary.textContent = 'Všechna zařízení';
+        } else if (devChecked === 1) {
+          devSummary.textContent = 'Vybrán 1';
+        } else {
+          devSummary.textContent = `Vybráno ${devChecked}`;
+        }
+      }
+    }
+
+    // --- Modal for Device Alias Edit ---
+    window.openDeviceAliasModal = function(model, snStr) {
+      const a = allActivities.find(act => (act.deviceName === model || act.deviceName === 'Neznámé zařízení') && String(act.serialNumber || 0).padStart(3, '0').slice(-3) === snStr);
+      if (!a) return;
+      
+      const pId = a.productID;
+      const mId = a.manufacturerID;
+      const fullSn = a.serialNumber;
+      const officialName = getOfficialDeviceName(pId, mId);
+      
+      let dialog = document.getElementById('aliasDialog');
+      if (!dialog) {
+        dialog = document.createElement('dialog');
+        dialog.id = 'aliasDialog';
+        dialog.style.padding = '20px';
+        dialog.style.borderRadius = '8px';
+        dialog.style.border = '1px solid #333';
+        dialog.style.backgroundColor = '#1a1a1a';
+        dialog.style.color = '#fff';
+        dialog.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+        dialog.style.width = '400px';
+        dialog.style.maxWidth = '90vw';
+        document.body.appendChild(dialog);
+      }
+      
+      const variants = GARMIN_KNOWN_DERIVATIVES[String(pId)] || [];
+      let variantOptionsHtml = `<option value="">-- Vyberte konkrétní variantu --</option>`;
+      variants.forEach(v => {
+        variantOptionsHtml += `<option value="${v}">${v}</option>`;
+      });
+      
+      dialog.innerHTML = `
+        <h3 style="margin-top:0">Identifikace modelu (ID zařízení: ...${snStr})</h3>
+        <p style="font-size: 0.85em; color: #aaa; margin-bottom: 20px;">
+          Některá Garmin zařízení (např. Fenix a Tactix) sdílejí stejné ID ve FIT souboru.
+          Níže můžete přesně specifikovat svůj model.
+        </p>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display:block; margin-bottom:5px; font-size: 0.9em; color: #bbb;">1. Výchozí model (detekováno z FIT):</label>
+          <input type="text" disabled value="${officialName}" style="width: 100%; padding: 8px; background: #333; color: #999; border: 1px solid #444; border-radius: 4px; box-sizing: border-box;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display:block; margin-bottom:5px; font-size: 0.9em; color: #bbb;">2. Konkrétní varianta (volitelné):</label>
+          <select id="aliasVariantSelect" style="width: 100%; padding: 8px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; box-sizing: border-box;">
+            ${variantOptionsHtml}
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="display:block; margin-bottom:5px; font-size: 0.9em; color: #bbb;">3. Vlastní Alias (zobrazí se v aktivitě):</label>
+          <input type="text" id="aliasNameInput" style="width: 100%; padding: 8px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; box-sizing: border-box;" placeholder="Např. Moje oblíbené hodinky">
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button id="aliasBtnCancel" style="padding: 8px 16px; background: #444; border: none; color: white; border-radius: 4px; cursor: pointer;">Zrušit</button>
+          <button id="aliasBtnClear" style="padding: 8px 16px; background: #943; border: none; color: white; border-radius: 4px; cursor: pointer;">Smazat obojí</button>
+          <button id="aliasBtnSave" style="padding: 8px 16px; background: #369; border: none; color: white; border-radius: 4px; cursor: pointer;">Uložit nastavení</button>
+        </div>
+      `;
+      
+      const { variant, alias } = getDeviceAliasData(pId, fullSn);
+      dialog.querySelector('#aliasVariantSelect').value = variant;
+      dialog.querySelector('#aliasNameInput').value = alias;
+      
+      const cancelBtn = dialog.querySelector('#aliasBtnCancel');
+      const clearBtn = dialog.querySelector('#aliasBtnClear');
+      const saveBtn = dialog.querySelector('#aliasBtnSave');
+      
+      const closeDialog = () => {
+        dialog.close();
+        cancelBtn.onclick = null;
+        clearBtn.onclick = null;
+        saveBtn.onclick = null;
+      };
+      
+      cancelBtn.onclick = closeDialog;
+      
+      clearBtn.onclick = () => {
+        setDeviceAlias(pId, fullSn, '', '');
+        closeDialog();
+        refreshAllDeviceNames();
+      };
+      
+      saveBtn.onclick = () => {
+        const v = dialog.querySelector('#aliasVariantSelect').value;
+        const a = dialog.querySelector('#aliasNameInput').value;
+        setDeviceAlias(pId, fullSn, v, a);
+        closeDialog();
+        refreshAllDeviceNames();
+      };
+      
+      dialog.showModal();
+    };
+
+    function refreshAllDeviceNames() {
+      // Re-evaluate all device names
+      allActivities.forEach(a => {
+        a.deviceName = getResolvedDeviceName(a.productID, a.manufacturerID, a.serialNumber);
+      });
+      // Re-populate filters and re-render
+      populateFilters();
+      applyFilters();
     }
 
     function getFilteredActivitiesIndices() {
-      if (activeComparisonMode !== 'identical') return allActivities.map((_, i) => i);
       const activeIndices = [];
       const dateFrom = document.getElementById('filterDateFrom')?.value;
       const dateTo = document.getElementById('filterDateTo')?.value;
@@ -2220,13 +2482,12 @@
           }
         }
         if (pass && typeInputs.length > 0) {
-          let sId = 'Neznámý';
-          if (a.sessionData && a.sessionData['5'] !== undefined) sId = String(a.sessionData['5']);
-          if (!selectedTypes.includes(sId)) pass = false;
+          const sName = a.sportName || 'Neznámý';
+          if (!selectedTypes.includes(sName)) pass = false;
         }
         if (pass && devInputs.length > 0) {
-          const model = (a.fileId && a.fileId.product) || 'Neznámé zařízení';
-          const sn = (a.fileId && a.fileId.serialNumber) || 0;
+          const model = a.deviceName || 'Neznámé zařízení';
+          const sn = a.serialNumber || 0;
           const snStr = String(sn).padStart(3, '0').slice(-3);
           const devKey = `${model}|${snStr}`;
           if (!selectedDevs.includes(devKey)) pass = false;
@@ -2237,20 +2498,15 @@
     }
 
     function applyFilters() {
-      if (activeComparisonMode === 'identical') {
-        computeMatchingGroups();
-        // Overit, ze nase vybrane jsou stale zobrazeny, jinak vybrat prvni skupinu
-        const active = getFilteredActivitiesIndices();
-        const validIndices = selectedIndices.filter(idx => active.includes(idx));
-        if (validIndices.length !== selectedIndices.length) {
-          selectedIndices = validIndices;
-          if (selectedIndices.length === 0 && suggestedGroups.length > 0) {
-            selectedIndices = [...suggestedGroups[0].indices];
-          }
-        }
-        renderSidebar();
-        renderDashboard();
+      updateMultiselectSummaries();
+      computeMatchingGroups();
+      const active = getFilteredActivitiesIndices();
+      const validIndices = selectedIndices.filter(idx => active.includes(idx));
+      if (validIndices.length !== selectedIndices.length) {
+        selectedIndices = validIndices;
       }
+      renderSidebar();
+      renderDashboard();
     }
 
     // --- Multi-Stage Route Matching & Auto-Pairing Engine ---
@@ -2258,12 +2514,16 @@
       suggestedGroups = [];
       routeClusters = [];
 
+      const activeIndices = getFilteredActivitiesIndices();
+
       if (activeComparisonMode === 'joint') {
         // --- Režim A: Společná aktivita (více účastníků v 1 čase, +-30 min) ---
-        for (let i = 0; i < allActivities.length; i++) {
-          for (let j = i + 1; j < allActivities.length; j++) {
-            const a1 = allActivities[i];
-            const a2 = allActivities[j];
+        for (let i = 0; i < activeIndices.length; i++) {
+          for (let j = i + 1; j < activeIndices.length; j++) {
+            const idx1 = activeIndices[i];
+            const idx2 = activeIndices[j];
+            const a1 = allActivities[idx1];
+            const a2 = allActivities[idx2];
 
             if (a1.records && a1.records[0] && a2.records && a2.records[0]) {
               const timeDiff = Math.abs((a1.records[0].timestamp - a2.records[0].timestamp) / 1000);
@@ -2274,7 +2534,7 @@
                   type: 'scenario-a',
                   title: `⚡ Společná aktivita: ${a1.user} & ${a2.user}`,
                   subtext: `${a1.records[0].timestamp.toLocaleDateString()} @ ${a1.records[0].timestamp.toLocaleTimeString().slice(0,5)} (${a1.totalDistance.toFixed(1)} km)`,
-                  indices: [i, j]
+                  indices: [idx1, idx2]
                 });
               }
             }
@@ -2282,17 +2542,19 @@
         }
 
         // If no paired group was found by time, but 2+ activities are loaded, group them all for comparison!
-        if (suggestedGroups.length === 0 && allActivities.length >= 2) {
+        if (suggestedGroups.length === 0 && activeIndices.length >= 2) {
+          const activeActs = activeIndices.map(idx => allActivities[idx]);
+          const uniqueUsers = Array.from(new Set(activeActs.map(a => a.user)));
+          const userStr = uniqueUsers.length > 3 ? `${uniqueUsers.slice(0, 3).join(', ')} a další` : uniqueUsers.join(', ');
           suggestedGroups.push({
             type: 'scenario-a',
-            title: `⚡ Načtené aktivity ke srovnání (${allActivities.length} soubory)`,
-            subtext: `${allActivities[0].records[0]?.timestamp?.toLocaleDateString() || ''} (${allActivities.map(a => a.user).join(', ')})`,
-            indices: allActivities.slice(0, Math.min(5, allActivities.length)).map((_, idx) => idx)
+            title: `⚡ Načtené aktivity ke srovnání (${activeIndices.length} soubory)`,
+            subtext: `${activeActs[0].records[0]?.timestamp?.toLocaleDateString() || ''} (${userStr})`,
+            indices: activeIndices.slice(0, Math.min(5, activeIndices.length))
           });
         }
       } else {
         // --- Režim B: Moje totožné aktivity v čase (3-stupňová filtrace) ---
-        const activeIndices = getFilteredActivitiesIndices();
         const visited = new Array(allActivities.length).fill(false);
 
         for (let i = 0; i < activeIndices.length; i++) {
@@ -2431,12 +2693,14 @@
 
             const dateStr = act.records[0]?.timestamp ? act.records[0].timestamp.toLocaleDateString() : '';
             const timeStr = act.records[0]?.timestamp ? act.records[0].timestamp.toLocaleTimeString().slice(0,5) : '';
+            const sName = act.sportName || 'Neznámý sport';
+            const sIcon = act.sportIcon || '⏱️';
 
             item.innerHTML = `
               <input type="checkbox" ${isSel ? 'checked' : ''} style="accent-color:#38bdf8; cursor:pointer;">
               <div style="width:8px; height:8px; border-radius:50%; background:${color};"></div>
               <div style="flex:1; min-width:0; font-size:0.75rem;">
-                <div style="font-weight:600;">${dateStr} @ ${timeStr} &bull; ${act.user}</div>
+                <div style="font-weight:600;">${sIcon} ${sName} &bull; ${dateStr} @ ${timeStr} &bull; ${act.user}</div>
               </div>
             `;
             itemsContainer.appendChild(item);
@@ -2457,8 +2721,11 @@
       // Render Individual Activity Checklist below
       const listContainer = document.getElementById('fileListContainer');
       listContainer.innerHTML = '';
+      
+      const activeIndices = getFilteredActivitiesIndices();
 
       allActivities.forEach((act, idx) => {
+        if (!activeIndices.includes(idx)) return;
         const item = document.createElement('div');
         const isSel = selectedIndices.includes(idx);
         const selOrder = selectedIndices.indexOf(idx);
@@ -2474,9 +2741,26 @@
         item.innerHTML = `
           <input type="checkbox" class="file-checkbox" ${isSel ? 'checked' : ''} onchange="toggleActivitySelection(${idx})">
           <div class="color-dot" style="background: ${color}; border: ${isSel ? 'none' : '1px solid var(--text-muted)'};"></div>
-          <div class="file-info">
+          <div class="file-info" style="width: 100%;">
             <div class="file-title">${act.sportIcon || '⏱️'} ${act.user} &bull; ${act.deviceName}</div>
             <div class="file-meta">${act.sportName || 'Aktivita'} &bull; ${act.totalDistance.toFixed(1)} km &bull; ${dateStr}</div>
+            ${act.deviceInfos && act.deviceInfos.length > 1 ? `
+            <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px; line-height: 1.3;">
+              <strong>Senzory:</strong> ${act.deviceInfos.filter(d => d.deviceIndex > 0).map(d => {
+                let name = 'Neznámý';
+                if (d.deviceType === 120 || d.antplusDeviceType === 120) name = 'HRM (Hrudní pás)';
+                else if (d.deviceType === 121 || d.antplusDeviceType === 121) name = 'Senzor rychlosti/kadence';
+                else if (d.deviceType === 11 || d.antplusDeviceType === 11) name = 'Power Meter';
+                else if (d.deviceType === 25 || d.antplusDeviceType === 25) name = 'Tempe (Teploměr)';
+                return name;
+              }).filter((v, i, a) => a.indexOf(v) === i && v !== 'Neznámý').join(', ') || 'Různé ANT+/BLE'}
+            </div>
+            ` : ''}
+            ${act.records.some(r => r.devBattery !== undefined || r.devGpsQuality !== undefined) ? `
+            <div style="font-size: 0.7rem; color: #64748b; line-height: 1.3;">
+              <strong>ConnectIQ:</strong> Baterie, Kvalita GPS
+            </div>
+            ` : ''}
           </div>
         `;
         listContainer.appendChild(item);
@@ -2575,6 +2859,10 @@
         hiddenCharts.flow = !activeActs.some(a => a.hasFlowData);
         hiddenCharts.battery = !activeActs.some(a => a.records.some(r => r.devBattery !== undefined));
         hiddenCharts.gpsQuality = !activeActs.some(a => a.records.some(r => r.devGpsQuality !== undefined));
+        
+        hiddenCharts.power = !activeActs.some(a => a.records.some(r => r.power !== undefined));
+        hiddenCharts.cadence = !activeActs.some(a => a.records.some(r => r.cadence !== undefined));
+        hiddenCharts.lrBalance = !activeActs.some(a => a.records.some(r => r.lrBalance !== undefined));
       }
 
       renderHiddenChartsBar();
@@ -2586,10 +2874,14 @@
     // --- Leaflet Map Rendering with Single Common Start/Finish Markers & Interactive Tooltips ---
     function renderMap() {
       if (!map) {
-        map = L.map('map').setView([50.0755, 14.4378], 10);
+        map = L.map('map').setView([50.0755, 14.4378], 6);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap'
         }).addTo(map);
+
+        new ResizeObserver(() => {
+          if (map) map.invalidateSize();
+        }).observe(document.getElementById('map'));
 
         mapPolylineGroup = L.layerGroup().addTo(map);
         mapMarkerGroup = L.layerGroup().addTo(map);
@@ -2599,7 +2891,10 @@
       }
 
       crosshairMarkers = [];
-      if (selectedIndices.length === 0) return;
+      if (selectedIndices.length === 0) {
+        map.setView([50.0755, 14.4378], 6);
+        return;
+      }
 
       const bounds = L.latLngBounds();
       const activeActs = selectedIndices.map(i => allActivities[i]);
@@ -2615,7 +2910,8 @@
           const tRecs = activeActs[1].records;
           for (let i = 0; i < Math.min(200, bRecs.length); i++) {
             for (let j = 0; j < Math.min(200, tRecs.length); j++) {
-              if (haversineDistance(bRecs[i].lat, bRecs[i].lng, tRecs[j].lat, tRecs[j].lng) <= 50) {
+              if (bRecs[i].lat !== undefined && tRecs[j].lat !== undefined &&
+                  haversineDistance(bRecs[i].lat, bRecs[i].lng, tRecs[j].lat, tRecs[j].lng) <= 50) {
                 commonStartLatLng = [bRecs[i].lat, bRecs[i].lng];
                 break;
               }
@@ -2625,7 +2921,8 @@
           // Finish: last point within 50m
           for (let i = bRecs.length - 1; i >= Math.max(0, bRecs.length - 200); i--) {
             for (let j = tRecs.length - 1; j >= Math.max(0, tRecs.length - 200); j--) {
-              if (haversineDistance(bRecs[i].lat, bRecs[i].lng, tRecs[j].lat, tRecs[j].lng) <= 50) {
+              if (bRecs[i].lat !== undefined && tRecs[j].lat !== undefined &&
+                  haversineDistance(bRecs[i].lat, bRecs[i].lng, tRecs[j].lat, tRecs[j].lng) <= 50) {
                 commonFinishLatLng = [bRecs[i].lat, bRecs[i].lng];
                 break;
               }
@@ -2633,8 +2930,14 @@
             if (commonFinishLatLng) break;
           }
         }
-        if (!commonStartLatLng) commonStartLatLng = [bRecs[0].lat, bRecs[0].lng];
-        if (!commonFinishLatLng) commonFinishLatLng = [bRecs[bRecs.length - 1].lat, bRecs[bRecs.length - 1].lng];
+        if (!commonStartLatLng) {
+          const firstV = bRecs.find(r => r.lat !== undefined && r.lng !== undefined);
+          if (firstV) commonStartLatLng = [firstV.lat, firstV.lng];
+        }
+        if (!commonFinishLatLng) {
+          const lastV = [...bRecs].reverse().find(r => r.lat !== undefined && r.lng !== undefined);
+          if (lastV) commonFinishLatLng = [lastV.lat, lastV.lng];
+        }
       }
 
       // Add Start & Finish Markers
@@ -2662,7 +2965,7 @@
       selectedIndices.forEach((actIdx, colorIdx) => {
         const act = allActivities[actIdx];
         const color = TRACK_COLORS[colorIdx % TRACK_COLORS.length];
-        const latLngs = act.records.map(r => [r.lat, r.lng]);
+        const latLngs = act.records.filter(r => r.lat !== undefined && r.lng !== undefined).map(r => [r.lat, r.lng]);
 
         if (latLngs.length > 0) {
           const polyline = L.polyline(latLngs, { color: color, weight: 5, opacity: 0.85 }).addTo(mapPolylineGroup);
@@ -2673,14 +2976,17 @@
           polyline.on('mousemove click', (e) => {
             const clickLL = e.latlng;
             let minDist = Infinity;
-            let closestPt = act.records[0];
+            let closestPt = null;
             act.records.forEach((r) => {
-              const d = haversineDistance(clickLL.lat, clickLL.lng, r.lat, r.lng);
-              if (d < minDist) {
-                minDist = d;
-                closestPt = r;
+              if (r.lat !== undefined && r.lng !== undefined) {
+                const d = haversineDistance(clickLL.lat, clickLL.lng, r.lat, r.lng);
+                if (d < minDist) {
+                  minDist = d;
+                  closestPt = r;
+                }
               }
             });
+            if (!closestPt) return;
             const offsets = calculateCommonPassageOffsets(activeActs);
             const { distOffset, timeOffsetSec } = offsets[colorIdx];
             const targetX = xAxisMode === 'time'
@@ -2707,9 +3013,18 @@
       const legendSummary = selectedIndices.map((actIdx, colorIdx) => {
         const act = allActivities[actIdx];
         const color = TRACK_COLORS[colorIdx % TRACK_COLORS.length];
-        return `<span style="color:${color}; font-weight:700;">■ ${act.user} (${act.deviceName})</span>`;
+        const firstPt = act.records.find(r => r.timestamp);
+        if (firstPt) {
+          const d = firstPt.timestamp;
+          const dStr = `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()} @ ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+          return `<span style="color:${color}; font-weight:700;">■ ${act.user} • ${dStr}</span>`;
+        } else {
+          return `<span style="color:${color}; font-weight:700;">■ ${act.user}</span>`;
+        }
       }).join(' &nbsp; ');
       document.getElementById('mapLegendSummary').innerHTML = legendSummary;
+      
+      setTimeout(() => { if (map) map.invalidateSize(); }, 100);
     }
 
     // --- Dynamic Synchronized Multi-Charts Grid ---
@@ -2783,13 +3098,21 @@
 
       const altDs = [], speedDs = [], hrDs = [], tempDs = [];
       const staminaDs = [], gritDs = [], flowDs = [], batteryDs = [], gpsQualityDs = [];
+      const powerDs = [], energyDs = [], cadenceDs = [], lrBalanceDs = [];
 
       activeActs.forEach((act, colorIdx) => {
         const color = TRACK_COLORS[colorIdx % TRACK_COLORS.length];
-        const label = `${act.user} (${act.deviceName})`;
+        let label = act.user;
+        const firstPt = act.records.find(r => r.timestamp);
+        if (firstPt) {
+          const d = firstPt.timestamp;
+          const dStr = `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()} @ ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+          label = `${act.user} • ${dStr}`;
+        }
 
         const dataAlt = [], dataSpeed = [], dataHR = [], rawDataTemp = [];
         const dataStamina = [], dataGrit = [], dataFlow = [], dataBattery = [], dataGpsQuality = [];
+        const dataPower = [], dataEnergy = [], dataCadence = [], dataLrBalance = [];
 
         const { distOffset, startIdx, finishIdx } = offsets[colorIdx];
 
@@ -2829,10 +3152,31 @@
           dataFlow.push({ x: xVal, y: r.flow !== undefined ? r.flow : null });
           dataBattery.push({ x: xVal, y: r.devBattery !== undefined ? r.devBattery : null });
           dataGpsQuality.push({ x: xVal, y: r.devGpsQuality !== undefined ? r.devGpsQuality : null });
+
+          dataPower.push({ x: xVal, y: r.power !== undefined ? r.power : null });
+          dataEnergy.push({ x: xVal, y: r.energyKJ !== undefined ? r.energyKJ : null });
+          dataCadence.push({ x: xVal, y: r.cadence !== undefined ? r.cadence : null });
+          dataLrBalance.push({ x: xVal, y: r.lrBalance !== undefined ? r.lrBalance : null });
         });
 
         // Smooth temperature series moving average filter
         const smoothedTemp = smoothTemperatureSeries(rawDataTemp);
+
+        let sumCadence = 0;
+        let countCadence = 0;
+        dataCadence.forEach(pt => {
+          if (pt.y !== null && pt.y > 0) {
+            sumCadence += pt.y;
+            countCadence++;
+          }
+        });
+        const avgCadence = countCadence > 0 ? sumCadence / countCadence : null;
+        
+        const avgCadenceData = [];
+        if (avgCadence !== null && dataCadence.length > 0) {
+          avgCadenceData.push({ x: dataCadence[0].x, y: avgCadence });
+          avgCadenceData.push({ x: dataCadence[dataCadence.length - 1].x, y: avgCadence });
+        }
 
         altDs.push({ label, data: dataAlt, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.45 });
         speedDs.push({ label, data: dataSpeed, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0 });
@@ -2843,11 +3187,27 @@
         flowDs.push({ label, data: dataFlow, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0 });
         batteryDs.push({ label, data: dataBattery, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0, tension: 0.3 });
         gpsQualityDs.push({ label, data: dataGpsQuality, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0 });
+
+        powerDs.push({ label, data: dataPower, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0, yAxisID: 'y' });
+        energyDs.push({ label: `${label} (Energie)`, data: dataEnergy, backgroundColor: color + '33', fill: true, borderWidth: 0, pointRadius: 0, yAxisID: 'y1' });
+        cadenceDs.push({ label, data: dataCadence, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0, tension: 0.2 });
+        if (avgCadenceData.length > 0) {
+          cadenceDs.push({ label: `${label} (Průměr)`, data: avgCadenceData, borderColor: color, borderDash: [5, 5], fill: false, borderWidth: 1, pointRadius: 0 });
+        }
+        lrBalanceDs.push({ label, data: dataLrBalance, backgroundColor: color, type: 'scatter', pointRadius: 3, pointBorderColor: 'transparent', pointBackgroundColor: color });
       });
 
       const xTitle = xAxisMode === 'time' ? 'Čas (min)' : 'Vzdálenost (km)';
 
-      function createChartConfig(datasets, yTitle) {
+      function createChartConfig(datasets, yTitle, secondYTitle = null) {
+        const scales = {
+          x: { type: 'linear', title: { display: true, text: xTitle, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+          y: { type: 'linear', display: true, position: 'left', title: { display: true, text: yTitle, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+        };
+        if (secondYTitle) {
+          scales.y1 = { type: 'linear', display: true, position: 'right', title: { display: true, text: secondYTitle, color: '#94a3b8' }, grid: { drawOnChartArea: false }, ticks: { color: '#94a3b8' } };
+        }
+        
         return {
           type: 'line',
           data: { datasets },
@@ -2874,10 +3234,7 @@
                 }
               }
             },
-            scales: {
-              x: { type: 'linear', title: { display: true, text: xTitle, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-              y: { title: { display: true, text: yTitle, color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
-            },
+            scales: scales,
             onHover: (evt, activeElements) => {
               if (activeElements.length > 0 && activeElements[0].element && activeElements[0].element.$context) {
                 const rawPoint = activeElements[0].element.$context.raw;
@@ -2900,8 +3257,11 @@
       document.getElementById('cardChartFlow').classList.toggle('is-hidden', hiddenCharts.flow);
       document.getElementById('cardChartBattery').classList.toggle('is-hidden', hiddenCharts.battery);
       document.getElementById('cardChartGpsQuality').classList.toggle('is-hidden', hiddenCharts.gpsQuality);
+      document.getElementById('cardChartPower').classList.toggle('is-hidden', hiddenCharts.power);
+      document.getElementById('cardChartCadence').classList.toggle('is-hidden', hiddenCharts.cadence);
+      document.getElementById('cardChartLrBalance').classList.toggle('is-hidden', hiddenCharts.lrBalance);
 
-      [chartAlt, chartSpeed, chartHR, chartTemp, chartStamina, chartGrit, chartFlow, chartBattery, chartGpsQuality].forEach(c => { if (c) c.destroy(); });
+      [chartAlt, chartSpeed, chartHR, chartTemp, chartStamina, chartGrit, chartFlow, chartBattery, chartGpsQuality, chartPower, chartCadence, chartLrBalance].forEach(c => { if (c) c.destroy(); });
 
       if (!hiddenCharts.alt) chartAlt = new Chart(document.getElementById('chartAlt'), createChartConfig(altDs, 'Nadmořská výška (m)'));
       if (!hiddenCharts.speed) chartSpeed = new Chart(document.getElementById('chartSpeed'), createChartConfig(speedDs, speedMode === 'speed' ? 'Rychlost (km/h)' : 'Tempo (min/km)'));
@@ -2912,6 +3272,19 @@
       if (!hiddenCharts.flow) chartFlow = new Chart(document.getElementById('chartFlow'), createChartConfig(flowDs, 'Plynulost'));
       if (!hiddenCharts.battery) chartBattery = new Chart(document.getElementById('chartBattery'), createChartConfig(batteryDs, 'Baterie (%)'));
       if (!hiddenCharts.gpsQuality) chartGpsQuality = new Chart(document.getElementById('chartGpsQuality'), createChartConfig(gpsQualityDs, 'Kvalita GPS'));
+      
+      if (!hiddenCharts.power) {
+        // Combined Power & Energy dataset array (we will just render Power for simplicity, or both if needed)
+        // Energy is cumulative, power is instantaneous. Usually we just render power on left Y and energy on right Y.
+        // Let's render both in one chart
+        chartPower = new Chart(document.getElementById('chartPower'), createChartConfig([...powerDs, ...energyDs], 'Výkon (W)', 'Energie (kJ)'));
+      }
+      if (!hiddenCharts.cadence) {
+        chartCadence = new Chart(document.getElementById('chartCadence'), createChartConfig(cadenceDs, 'Kadence (ot./min)'));
+      }
+      if (!hiddenCharts.lrBalance) {
+        chartLrBalance = new Chart(document.getElementById('chartLrBalance'), createChartConfig(lrBalanceDs, 'Rovnováha L/P (%)'));
+      }
     }
 
     // Interactive Map Tooltip & Synchronized Crosshair Cursor By Exact X-Axis Value
@@ -3001,7 +3374,14 @@
       let html = `<thead><tr><th>Metrika / Vlastnost</th>`;
       activeActs.forEach((act, colorIdx) => {
         const color = TRACK_COLORS[colorIdx % TRACK_COLORS.length];
-        html += `<th style="color:${color};">■ ${act.user} (${act.deviceName})</th>`;
+        let label = act.user;
+        const firstPt = act.records.find(r => r.timestamp);
+        if (firstPt) {
+          const d = firstPt.timestamp;
+          const dStr = `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()} @ ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+          label = `${act.user} • ${dStr}`;
+        }
+        html += `<th style="color:${color};">■ ${label}</th>`;
       });
       html += `</tr></thead><tbody>`;
 
@@ -3163,6 +3543,17 @@
     window.processFileListWithPaths = processFileListWithPaths;
     window.applyFilters = applyFilters;
     window.handleFileSelect = handleFileSelect;
+
+    // Close multiselect dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+      const detailsElements = document.querySelectorAll('details.multiselect');
+      detailsElements.forEach(details => {
+        if (details.open && !details.contains(event.target)) {
+          details.removeAttribute('open');
+        }
+      });
+    });
+
   </script>
 </body>
 </html>

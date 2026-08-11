@@ -149,6 +149,7 @@ function _parseFull(data, view, headerSize, bodyEnd) {
   const fieldDescriptions = {};
   const records = [];
   const deviceInfos = [];
+  let totalEnergyJ = 0;
   let sessionData = null;
   const fileId = {};
   let lastRecordTimestamp = null;
@@ -296,6 +297,15 @@ function _parseFull(data, view, headerSize, bodyEnd) {
           if (!rec.timestamp && lastRecordTimestamp !== null) {
             rec.timestamp = lastRecordTimestamp;
           }
+          
+          if (rec.power !== undefined && lastRecordTimestamp !== null && rec.timestamp > lastRecordTimestamp) {
+            const dt = rec.timestamp - lastRecordTimestamp;
+            if (dt < 60) {
+              totalEnergyJ += rec.power * dt;
+            }
+          }
+          rec.energyKJ = totalEnergyJ / 1000.0;
+
           if (rec.timestamp) lastRecordTimestamp = rec.timestamp;
           if (rec.timestamp || (rec.lat !== undefined && rec.lng !== undefined)) {
             records.push(rec);
@@ -361,6 +371,12 @@ function _parseRecordFields(msgData, devData, isLittle) {
       rec.dist = dv.getUint32(0, isLittle) / 100.0;
     }
     else if (fNum == 7 && size === 2) rec.power = dv.getUint16(0, isLittle);
+    else if (fNum == 30 && size === 1) {
+      const rawVal = raw[0];
+      const val = rawVal & 0x7F;
+      const isRight = (rawVal & 0x80) !== 0;
+      rec.lrBalance = isRight ? (100 - val) : val;
+    }
     else if (fNum == 13 && size === 1) rec.temp = dv.getInt8(0);
     else if (fNum == 90 && size === 1) rec.battery = raw[0];
     else if (fNum == 61 && size === 2) rec.epe = dv.getUint16(0, isLittle) / 100.0;
