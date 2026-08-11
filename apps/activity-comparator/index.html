@@ -414,6 +414,63 @@
       margin-top: 0.2rem;
     }
 
+    /* Multiselect Filters */
+    details.multiselect {
+      position: relative;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+    }
+    details.multiselect summary {
+      padding: 0.3rem 0.6rem;
+      cursor: pointer;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      min-width: 160px;
+      list-style: none; /* Hide default arrow in some browsers */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    details.multiselect summary::after {
+      content: '▼';
+      font-size: 0.7rem;
+      color: var(--primary);
+    }
+    details.multiselect[open] summary::after {
+      content: '▲';
+    }
+    details.multiselect summary::-webkit-details-marker {
+      display: none;
+    }
+    details.multiselect .options {
+      position: absolute;
+      top: 100%; left: 0;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+      padding: 0.5rem;
+      z-index: 1000;
+      min-width: 100%;
+      max-height: 250px;
+      overflow-y: auto;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    details.multiselect label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 0.85rem;
+    }
+    details.multiselect label:hover {
+      color: var(--primary);
+    }
+
     /* File Checkbox List */
     .file-list-container {
       max-height: 380px;
@@ -900,6 +957,35 @@
         <div style="display:flex; align-items:center; gap:0.4rem;">
           <span class="toggle-label" title="Minimální % trasových bodů v GPS toleranci">Shoda tvaru: <strong id="valOverlapTolerance" style="color:var(--accent-blue);">90 %</strong></span>
           <input type="range" id="sliderOverlapTolerance" min="50" max="100" value="90" step="5" oninput="onOverlapToleranceChange(this.value)" title="Minimální % shodných bodů (50-100%)" style="accent-color: #38bdf8; cursor: pointer; vertical-align: middle; width: 70px;">
+        </div>
+      </div>
+
+      <div class="toggle-group" id="filtersGroup" style="display:none; flex-wrap:wrap; gap:0.9rem; align-items:center; background:rgba(255,255,255,0.03); padding:0.3rem 0.7rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06); width: 100%;">
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span class="toggle-label">Od:</span>
+          <input type="date" id="filterDateFrom" onchange="applyFilters()" style="background:var(--bg-dark); color:var(--text-main); border:1px solid var(--card-border); border-radius:4px; padding:0.2rem; font-family:'Inter', sans-serif;">
+        </div>
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span class="toggle-label">Do:</span>
+          <input type="date" id="filterDateTo" onchange="applyFilters()" style="background:var(--bg-dark); color:var(--text-main); border:1px solid var(--card-border); border-radius:4px; padding:0.2rem; font-family:'Inter', sans-serif;">
+        </div>
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span class="toggle-label">Druh:</span>
+          <details class="multiselect" id="filterTypeSelect">
+            <summary>Všechny sporty</summary>
+            <div class="options" id="filterTypeOptions">
+              <!-- Dynamically populated -->
+            </div>
+          </details>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.4rem;">
+          <span class="toggle-label">Zařízení:</span>
+          <details class="multiselect" id="filterDeviceSelect">
+            <summary>Všechna zařízení</summary>
+            <div class="options" id="filterDeviceOptions">
+              <!-- Dynamically populated -->
+            </div>
+          </details>
         </div>
       </div>
 
@@ -1877,6 +1963,10 @@
       if (statusPercent) statusPercent.innerText = `100 %`;
       if (progressBarFill) progressBarFill.style.width = `100%`;
 
+      if (allActivities.length > 0) {
+        populateFilters();
+      }
+
       computeMatchingGroups();
 
       if (selectedIndices.length === 0 && allActivities.length > 0) {
@@ -1889,6 +1979,8 @@
 
       if (allActivities.length > 0) {
         document.getElementById('dashboardLayout').style.display = 'grid';
+        const dz = document.getElementById('dropzone');
+        if (dz) dz.style.display = 'none';
       }
       renderSidebar();
       renderDashboard();
@@ -2050,6 +2142,7 @@
       const btnJoint = document.getElementById('btnModeJoint');
       const btnIdentical = document.getElementById('btnModeIdentical');
       const slidersGroup = document.getElementById('slidersGroup');
+      const filtersGroup = document.getElementById('filtersGroup');
 
       if (btnJoint) btnJoint.classList.toggle('active', mode === 'joint');
       if (btnIdentical) btnIdentical.classList.toggle('active', mode === 'identical');
@@ -2058,6 +2151,104 @@
       computeMatchingGroups();
       renderSidebar();
       if (selectedIndices.length > 0) {
+        renderDashboard();
+      }
+    }
+
+    const sportNames = { 1:'Běh', 2:'Cyklistika', 5:'Plavání', 11:'Fitness', 17:'Turistika', 8:'Chůze' };
+
+    function populateFilters() {
+      const typeSet = new Set();
+      const deviceMap = new Map();
+
+      allActivities.forEach(a => {
+        let sId = 'Neznámý';
+        if (a.sessionData && a.sessionData['5'] !== undefined) sId = String(a.sessionData['5']);
+        typeSet.add(sId);
+
+        const model = (a.fileId && a.fileId.product) || 'Neznámé zařízení';
+        const sn = (a.fileId && a.fileId.serialNumber) || 0;
+        const snStr = String(sn).padStart(3, '0').slice(-3);
+        const devKey = `${model}|${snStr}`;
+        deviceMap.set(devKey, { model, snStr, name: `${model} (SN: ...${snStr})` });
+      });
+
+      const typesEl = document.getElementById('filterTypeOptions');
+      if (typesEl) {
+        typesEl.innerHTML = '';
+        Array.from(typeSet).sort().forEach(sId => {
+          const label = document.createElement('label');
+          const name = sportNames[sId] || `Sport ${sId}`;
+          label.innerHTML = `<input type="checkbox" value="${sId}" onchange="applyFilters()" checked> ${name}`;
+          typesEl.appendChild(label);
+        });
+      }
+
+      const devsEl = document.getElementById('filterDeviceOptions');
+      if (devsEl) {
+        devsEl.innerHTML = '';
+        Array.from(deviceMap.values()).sort((a,b) => a.name.localeCompare(b.name)).forEach(d => {
+          const label = document.createElement('label');
+          label.innerHTML = `<input type="checkbox" value="${d.model}|${d.snStr}" onchange="applyFilters()" checked> ${d.name}`;
+          devsEl.appendChild(label);
+        });
+      }
+    }
+
+    function getFilteredActivitiesIndices() {
+      if (activeComparisonMode !== 'identical') return allActivities.map((_, i) => i);
+      const activeIndices = [];
+      const dateFrom = document.getElementById('filterDateFrom')?.value;
+      const dateTo = document.getElementById('filterDateTo')?.value;
+      
+      const typeInputs = document.querySelectorAll('#filterTypeOptions input[type="checkbox"]');
+      const selectedTypes = Array.from(typeInputs).filter(i => i.checked).map(i => i.value);
+      
+      const devInputs = document.querySelectorAll('#filterDeviceOptions input[type="checkbox"]');
+      const selectedDevs = Array.from(devInputs).filter(i => i.checked).map(i => i.value);
+
+      for(let i=0; i<allActivities.length; i++){
+        const a = allActivities[i];
+        let pass = true;
+        if (dateFrom || dateTo) {
+          const ts = a.records[0]?.timestamp;
+          if (ts) {
+            const d = new Date(ts.getTime() - ts.getTimezoneOffset() * 60000);
+            const dStr = d.toISOString().split('T')[0];
+            if (dateFrom && dStr < dateFrom) pass = false;
+            if (dateTo && dStr > dateTo) pass = false;
+          }
+        }
+        if (pass && typeInputs.length > 0) {
+          let sId = 'Neznámý';
+          if (a.sessionData && a.sessionData['5'] !== undefined) sId = String(a.sessionData['5']);
+          if (!selectedTypes.includes(sId)) pass = false;
+        }
+        if (pass && devInputs.length > 0) {
+          const model = (a.fileId && a.fileId.product) || 'Neznámé zařízení';
+          const sn = (a.fileId && a.fileId.serialNumber) || 0;
+          const snStr = String(sn).padStart(3, '0').slice(-3);
+          const devKey = `${model}|${snStr}`;
+          if (!selectedDevs.includes(devKey)) pass = false;
+        }
+        if (pass) activeIndices.push(i);
+      }
+      return activeIndices;
+    }
+
+    function applyFilters() {
+      if (activeComparisonMode === 'identical') {
+        computeMatchingGroups();
+        // Overit, ze nase vybrane jsou stale zobrazeny, jinak vybrat prvni skupinu
+        const active = getFilteredActivitiesIndices();
+        const validIndices = selectedIndices.filter(idx => active.includes(idx));
+        if (validIndices.length !== selectedIndices.length) {
+          selectedIndices = validIndices;
+          if (selectedIndices.length === 0 && suggestedGroups.length > 0) {
+            selectedIndices = [...suggestedGroups[0].indices];
+          }
+        }
+        renderSidebar();
         renderDashboard();
       }
     }
@@ -2101,18 +2292,24 @@
         }
       } else {
         // --- Režim B: Moje totožné aktivity v čase (3-stupňová filtrace) ---
+        const activeIndices = getFilteredActivitiesIndices();
         const visited = new Array(allActivities.length).fill(false);
 
-        for (let i = 0; i < allActivities.length; i++) {
-          if (visited[i]) continue;
-          const base = allActivities[i];
+        for (let i = 0; i < activeIndices.length; i++) {
+          const idx = activeIndices[i];
+          if (visited[idx]) continue;
+          
+          const base = allActivities[idx];
           if (!base.records || base.records.length === 0) continue;
 
-          const cluster = [i];
+          const cluster = [idx];
+          visited[idx] = true;
 
-          for (let j = i + 1; j < allActivities.length; j++) {
-            if (visited[j]) continue;
-            const candidate = allActivities[j];
+          for (let j = i + 1; j < activeIndices.length; j++) {
+            const jdx = activeIndices[j];
+            if (visited[jdx]) continue;
+            
+            const candidate = allActivities[jdx];
             if (!candidate.records || candidate.records.length === 0) continue;
 
             // 1. Sport Type Filter
@@ -2133,14 +2330,14 @@
             // 4. Track Coverage Overlap Filter (user-defined %, default 90%)
             const overlapRatio = calculateTrackOverlapRatio(base, candidate, routeGpsToleranceMeters);
             if ((overlapRatio * 100) >= routeOverlapTolerancePct) {
-              cluster.push(j);
-              visited[j] = true;
+              cluster.push(jdx);
+              visited[jdx] = true;
             }
           }
 
           if (cluster.length >= 2) {
-            visited[i] = true;
-            const avgDist = cluster.reduce((sum, idx) => sum + allActivities[idx].totalDistance, 0) / cluster.length;
+            visited[idx] = true;
+            const avgDist = cluster.reduce((sum, currentIdx) => sum + allActivities[currentIdx].totalDistance, 0) / cluster.length;
             routeClusters.push({
               sportId: base.sportId,
               sportName: base.sportName || 'Aktivita',
@@ -2637,7 +2834,7 @@
         // Smooth temperature series moving average filter
         const smoothedTemp = smoothTemperatureSeries(rawDataTemp);
 
-        altDs.push({ label, data: dataAlt, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, pointRadius: 0 });
+        altDs.push({ label, data: dataAlt, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.45 });
         speedDs.push({ label, data: dataSpeed, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0 });
         hrDs.push({ label, data: dataHR, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0 });
         tempDs.push({ label, data: smoothedTemp, borderColor: color, fill: false, borderWidth: 2, pointRadius: 0, tension: 0.45 });
@@ -2964,6 +3161,7 @@
     window.toggleFullscreen = toggleFullscreen;
     window.exportToExcel = exportToExcel;
     window.processFileListWithPaths = processFileListWithPaths;
+    window.applyFilters = applyFilters;
     window.handleFileSelect = handleFileSelect;
   </script>
 </body>

@@ -1063,10 +1063,17 @@
         <button type="button" class="modal-close" onclick="closeExportModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="notice-box">
-        <i class="fa-solid fa-circle-check" style="color:var(--accent-green); margin-right:6px;"></i>
-        <strong data-i18n="dupBypassNoticeTitle">Bypass duplicity aktivní:</strong>
-        <span data-i18n="dupBypassNoticeDesc">Hodnota time_created v hlavičce souboru byla posunuta o +1 sekundu. Garmin Connect přijme tento soubor bez chybové hlášky o duplicité!</span>
+
+      <div style="background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:8px; padding:1rem; margin-bottom:1rem;">
+        <div style="font-weight:600; margin-bottom:0.5rem;">Nastavení časového razítka (Ochrana proti duplicitě na Garmin Connect)</div>
+        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; margin-bottom:0.4rem;">
+          <input type="radio" name="exportTimeOpt" id="optTimePlusOne" value="plus1" checked>
+          <span>Přidat +1 vteřinu (výchozí — obchází zamítnutí duplicity)</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+          <input type="radio" name="exportTimeOpt" id="optTimeOrig" value="orig">
+          <span>Zachovat původní čas (vyžaduje smazání původní aktivity z Garmin účtu)</span>
+        </label>
       </div>
 
       <div class="instruction-list">
@@ -2492,7 +2499,7 @@
       document.getElementById('exportModal').classList.remove('open');
     }
 
-    async function buildRepairedFitBinary() {
+    async function buildRepairedFitBinary(addOneSecond = true) {
       let activeTangles = detectedTangles.filter(t => t.active);
       let filterMask = new Array(records.length).fill(true);
 
@@ -2584,13 +2591,13 @@
       const validCads = repairedRecords.filter(r => r.cadence && r.cadence > 0).map(r => r.cadence);
       const avgCad = validCads.length > 0 ? Math.round(validCads.reduce((a, b) => a + b, 0) / validCads.length) : 0;
 
-      const encodedBuffer = encodeNativeFitBinary(repairedRecords, fileIdHeader, avgHr, avgCad);
+      const encodedBuffer = encodeNativeFitBinary(repairedRecords, fileIdHeader, avgHr, avgCad, addOneSecond);
       return encodedBuffer;
     }
 
-    function encodeNativeFitBinary(repairedRecs, headerInfo, avgHr, avgCad) {
-      // Shift file_id time_created by +1 second to bypass Garmin Connect duplicate check!
-      const shiftedTimeCreated = (headerInfo.timeCreated || Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET) + 1;
+    function encodeNativeFitBinary(repairedRecs, headerInfo, avgHr, avgCad, addOneSecond = true) {
+      const timeShift = addOneSecond ? 1 : 0;
+      const shiftedTimeCreated = (headerInfo.timeCreated || Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET) + timeShift;
 
       const buffer = new ArrayBuffer(repairedRecs.length * 64 + 1024);
       const view = new DataView(buffer);
@@ -2667,7 +2674,8 @@
     function calcHaversine(lat1, lon1, lat2, lon2) { return _calcHaversine(lat1, lon1, lat2, lon2); }
 
     async function downloadFitFile() {
-      const buffer = await buildRepairedFitBinary();
+      const addOneSecond = document.getElementById('optTimePlusOne').checked;
+      const buffer = await buildRepairedFitBinary(addOneSecond);
       const blob = new Blob([buffer], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
