@@ -241,6 +241,59 @@
       color: #070a12;
     }
 
+    /* Dropzone */
+    .dropzone {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      border: 2px dashed rgba(56, 189, 248, 0.4);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.08);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.2);
+    }
+
+    .cloud-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 0.85rem;
+      background: rgba(56, 189, 248, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      transition: all 0.3s;
+    }
+    .dropzone:hover .cloud-icon {
+      transform: scale(1.1);
+      background: rgba(56, 189, 248, 0.25);
+    }
+    .cloud-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke-width: 2;
+    }
+
+    .dropzone-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.4rem;
+    }
+    .dropzone-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
     /* Main Workspace Layout */
     .app-workspace {
       display: flex;
