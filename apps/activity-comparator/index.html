@@ -2964,23 +2964,7 @@
     window.toggleFullscreen = toggleFullscreen;
     window.exportToExcel = exportToExcel;
     window.processFileListWithPaths = processFileListWithPaths;
-  </script>
-  <script type="module">
-  setTimeout(() => {
-    fetch('../../FITs for tests/2026-06-05-06-17-49.fit')
-      .then(r => r.blob())
-      .then(blob => {
-        const f = new File([blob], 'test.fit', { type: 'application/octet-stream' });
-        if (window.processFileListWithPaths) {
-          window.processFileListWithPaths([{ file: f, path: 'test.fit' }])
-            .then(() => {
-                console.log("SUCCESS");
-                console.log("dashboard display:", document.getElementById('dashboardLayout').style.display);
-            })
-            .catch(err => console.error("PROCESS ERROR:", err));
-        }
-      });
-  }, 2000);
+    window.handleFileSelect = handleFileSelect;
   </script>
 </body>
 </html>
