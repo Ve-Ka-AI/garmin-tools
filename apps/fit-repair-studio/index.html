@@ -72,58 +72,73 @@
 
     /* Top Bar Header */
     header {
-      height: 64px;
-      padding: 0 1.5rem;
       background: var(--card-bg);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--card-border);
+      padding: 0.8rem 1.5rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      position: sticky;
+      top: 0;
       z-index: 1000;
-      flex-shrink: 0;
     }
 
-    .brand-section {
+    .brand {
       display: flex;
       align-items: center;
-      gap: 0.85rem;
+      gap: 0.75rem;
     }
 
     .brand-icon {
-      width: 40px;
-      height: 40px;
+      width: 42px;
+      height: 42px;
       background: linear-gradient(135deg, #38bdf8, #f43f5e);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.25rem;
-      color: #fff;
-      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+      box-shadow: 0 4px 15px rgba(56, 189, 248, 0.25);
     }
 
-    .brand-title {
-      font-size: 1.25rem;
+    .brand-icon i {
+      font-size: 1.2rem;
+      color: #ffffff;
+    }
+
+    h1 {
+      font-size: 1.45rem;
       font-weight: 800;
-      letter-spacing: -0.02em;
-      background: linear-gradient(135deg, #ffffff 30%, var(--primary) 100%);
+      background: linear-gradient(135deg, #ffffff, #93c5fd);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
 
     .privacy-badge {
-      font-size: 0.72rem;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 20px;
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(52, 211, 153, 0.3);
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 0.45rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.45rem 0.9rem;
+      border-radius: 30px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .privacy-badge i {
+      color: #10b981;
     }
 
     /* Module Selector Tabs */
@@ -298,7 +313,7 @@
     .app-workspace {
       display: flex;
       flex: 1;
-      height: calc(100vh - 64px);
+      height: calc(100vh - 150px);
       overflow: hidden;
       position: relative;
     }
@@ -852,19 +867,31 @@
 </head>
 <body>
 
-  <!-- Top Bar Header -->
   <header>
-    <div class="brand-section">
+    <div class="brand">
       <a href="../../index.html" style="text-decoration:none; display:flex; align-items:center; gap:0.5rem; color:var(--text-muted); font-size:0.82rem; font-weight:600; padding:4px 10px; border-radius:8px; border:1px solid var(--card-border); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--card-border)'; this.style.color='var(--text-muted)'">← Hub</a>
-      <div class="brand-icon"><i class="fa-solid fa-scissors"></i></div>
-      <div>
-        <div class="brand-title">Garmin FIT Repair Studio</div>
-        <div class="privacy-badge"><i class="fa-solid fa-shield-halved"></i> <span data-i18n="privacyNotice">100% Client-Side / Zero Upload</span></div>
+      <div class="brand-icon">
+        <i class="fa-solid fa-scissors"></i>
       </div>
+      <h1 data-i18n="appTitle">Garmin FIT Repair Studio</h1>
     </div>
 
-    <!-- Module Selector Tabs -->
-    <div class="module-tabs">
+    <div class="header-controls">
+      <div class="privacy-badge">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span data-i18n="privacyNotice">100% Lokální klientské zpracování (Browser-Only)</span>
+      </div>
+
+      <div class="lang-switcher">
+        <button class="lang-btn active" id="btnCZ" onclick="setLanguage('cs')">CZ</button>
+        <button class="lang-btn" id="btnEN" onclick="setLanguage('en')">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Module Selector Tabs -->
+  <div style="padding: 1rem 1.5rem; background: var(--bg-dark); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border);">
+    <div class="module-tabs" style="display: inline-flex;">
       <button type="button" class="tab-btn active" id="tabModule1" onclick="switchModule(1)">
         <i class="fa-solid fa-scissors"></i> <span data-i18n="mod1Title">Odstraňovač klubka</span>
       </button>
@@ -872,28 +899,13 @@
         <i class="fa-solid fa-pen-ruler"></i> <span data-i18n="mod2Title">Doplňovač trasy</span>
       </button>
     </div>
-
-    <!-- Header Actions & Language Switcher -->
-    <div class="header-actions">
-      <button type="button" class="btn" onclick="openFolderSelector()" title="Proskenovat celou složku se soubory FIT">
-        <i class="fa-solid fa-folder-tree"></i> <span data-i18n="btnLoadFolder">Načíst složku</span>
-      </button>
-      <button type="button" class="btn" onclick="openFileSelector()">
-        <i class="fa-solid fa-folder-open"></i> <span data-i18n="btnLoadFit">Načíst FIT</span>
-      </button>
-      <button type="button" class="btn" onclick="loadDemoFile()">
-        <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="btnDemo">Demo</span>
-      </button>
+    
+    <div>
       <button type="button" class="btn btn-export" id="btnExportHeader" onclick="showExportModal()" disabled>
         <i class="fa-solid fa-file-export"></i> <span data-i18n="btnExport">Exportovat FIT</span>
       </button>
-
-      <div class="lang-switcher">
-        <button type="button" class="lang-btn active" id="langCS" onclick="setLanguage('cs')">CZ</button>
-        <button type="button" class="lang-btn" id="langEN" onclick="setLanguage('en')">EN</button>
-      </div>
     </div>
-  </header>
+  </div>
 
   <!-- Workspace Container -->
   <div class="app-workspace">
@@ -1089,7 +1101,10 @@
 
   <!-- Dropzone Empty State Overlay -->
   <div class="dropzone-overlay" id="dropzoneOverlay">
-    <div class="dropzone" id="dropzoneBox" style="width:100%; max-width:800px; margin: 0 auto;">
+    <div class="dropzone" id="dropzoneBox" style="width:100%; max-width:800px; margin: 0 auto;" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".fit" multiple style="display:none;" onchange="handleFileSelect(event)">
+      <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" onchange="handleFolderSelect(event)">
+
       <div class="cloud-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path d="M16 16l-4-4-4 4M12 12v9" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1098,26 +1113,31 @@
       </div>
       <div class="dropzone-title" data-i18n="dropTitle">Přetáhněte sem Garmin .FIT soubor nebo složku</div>
       <div class="dropzone-subtitle" data-i18n="dropSubtitle">Aplikace proskenuje všechny aktivity, odhalí klubka i zapomenuté restarty a opraví je přímo v prohlížeči.</div>
+      
       <div style="margin-top: 1.25rem; display: flex; justify-content: center; gap: 0.85rem; flex-wrap: wrap;">
-        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #38bdf8, #0284c7); box-shadow: 0 4px 14px rgba(56,189,248,0.35);" onclick="openFileSelector()">
+        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #38bdf8, #0284c7); box-shadow: 0 4px 14px rgba(56,189,248,0.35); border: none; color: white; padding: 0.65rem 1.4rem; border-radius: 9px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
           <span data-i18n="btnSelectFile">Vybrat FIT soubor</span>
         </button>
-        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #818cf8, #4f46e5); box-shadow: 0 4px 14px rgba(129,140,248,0.35);" onclick="openFolderSelector()">
+        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #818cf8, #4f46e5); box-shadow: 0 4px 14px rgba(129,140,248,0.35); border: none; color: white; padding: 0.65rem 1.4rem; border-radius: 9px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;" onclick="event.stopPropagation(); document.getElementById('folderInput').click()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
           <span data-i18n="btnLoadFolder">Načíst složku .FIT</span>
         </button>
-        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 14px rgba(245,158,11,0.35);" onclick="loadDemoFile()">
+        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 14px rgba(245,158,11,0.35); border: none; color: white; padding: 0.65rem 1.4rem; border-radius: 9px; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;" onclick="event.stopPropagation(); loadDemoFile()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
           </svg>
           <span data-i18n="btnDemo">Načíst Demo</span>
         </button>
+      </div>
+
+      <div style="margin-top: 1rem; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.75rem; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto; font-size: 0.75rem; color: var(--text-muted);">
+        <span style="color: #f59e0b; font-weight: bold;">💡 Důležitá poznámka pro USB hodinky (MTP):</span> Systém Windows neumožňuje webovému prohlížeči přímé čtení z USB paměti hodinek bez uložení (vyvolá okna <i>Uložit jako</i>). Pro okamžité načtení desítek aktivit z hodinek <b>překopírujte složku Activity z hodinek na disk PC</b> a načtěte ji odtud tlačítkem <i>Načíst složku .FIT</i>.
       </div>
     </div>
   </div>
@@ -1172,8 +1192,7 @@
     </div>
   </div>
 
-  <input type="file" id="fileInput" accept=".fit" onchange="handleFileSelect(event)">
-  <input type="file" id="folderInput" webkitdirectory directory multiple onchange="handleFolderSelect(event)">
+    <!-- Moved inputs inside dropzone -->
 
   <!-- JavaScript Code Base -->
   <script type="module">
