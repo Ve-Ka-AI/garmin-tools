@@ -73,7 +73,6 @@
       max-width: 1440px;
       display: flex;
       flex-direction: column;
-      flex: 1;
       gap: 1.5rem;
     }
 
@@ -1136,7 +1135,7 @@
   </div>
 
   <!-- Upload Dropzone (Visible on initial load, matching Comparator) -->
-  <div class="dropzone" id="dropzoneBox" style="width:100%; max-width:800px; margin: auto; margin-top: 10vh;" onclick="document.getElementById('fileInput').click()">
+  <div class="dropzone" id="dropzoneBox" onclick="document.getElementById('fileInput').click()">
     <input type="file" id="fileInput" accept=".fit" multiple style="display:none;" onchange="handleFileSelect(event)">
       <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" onchange="handleFolderSelect(event)">
 
