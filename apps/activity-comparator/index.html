@@ -75,10 +75,9 @@
 
     /* Top Bar Header */
     header {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      flex-wrap: wrap;
       gap: 1rem;
       padding: 1rem 1.5rem;
       background: var(--card-bg);
@@ -89,10 +88,35 @@
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
     }
 
+    .header-left {
+      display: flex;
+      justify-content: flex-start;
+    }
+    
+    .hub-link {
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      transition: all 0.2s;
+    }
+    .hub-link:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(56, 189, 248, 0.05);
+    }
+
     .brand {
       display: flex;
       align-items: center;
       gap: 0.85rem;
+      justify-content: center;
     }
 
     .brand-icon {
@@ -127,20 +151,7 @@
       display: flex;
       align-items: center;
       gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .privacy-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      background: rgba(16, 185, 129, 0.15);
-      color: #6ee7b7;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      padding: 0.45rem 0.9rem;
-      border-radius: 9999px;
-      font-size: 0.82rem;
-      font-weight: 600;
+      justify-content: flex-end;
     }
 
     .lang-switcher {
@@ -270,6 +281,47 @@
     .dropzone-subtitle {
       font-size: 0.85rem;
       color: var(--text-muted);
+    }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-top: 2rem;
+      width: 100%;
+    }
+    @media (max-width: 1024px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .features-grid { grid-template-columns: 1fr; }
+    }
+    .feature-tile {
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .feature-tile h4 {
+      font-size: 0.95rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0;
+    }
+    .feature-tile p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin: 0;
     }
 
     /* Status Bar */
@@ -876,25 +928,20 @@
 
     <!-- Top Header -->
     <header>
+      <div class="header-left">
+        <a href="../../index.html" class="hub-link" id="btnBackToHub">← Zpět na rozcestník</a>
+      </div>
+
       <div class="brand">
-        <a href="../../index.html" style="text-decoration:none; display:flex; align-items:center; gap:0.5rem; color:var(--text-muted); font-size:0.82rem; font-weight:600; padding:4px 10px; border-radius:8px; border:1px solid var(--card-border); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--card-border)'; this.style.color='var(--text-muted)'">← Hub</a>
         <div class="brand-icon">
           <svg viewBox="0 0 24 24">
             <path d="M18 20V10M12 20V4M6 20v-6" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <h1 id="appTitle">Garmin Activity Comparator</h1>
+        <h1 id="appTitle">.FIT Activity Comparator</h1>
       </div>
 
       <div class="header-controls">
-        <div class="privacy-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          <span id="privacyText">100% lokální klientské zpracování (Browser-Only)</span>
-        </div>
-
         <div class="lang-switcher">
           <button class="lang-btn active" id="btnCZ" onclick="setLanguage('cz')">CZ</button>
           <button class="lang-btn" id="btnEN" onclick="setLanguage('en')">EN</button>
@@ -1001,8 +1048,8 @@
 
     <!-- Upload Dropzone -->
     <div class="dropzone" id="dropzone">
-      <!-- Hidden file inputs without accept attribute to prevent Windows Explorer file filtering issues -->
-      <input type="file" id="fileInputFiles" multiple style="display:none;" onchange="handleFileSelect(event)">
+      <!-- Hidden file inputs -->
+      <input type="file" id="fileInputFiles" multiple accept=".fit" style="display:none;" onchange="handleFileSelect(event)">
       <input type="file" id="fileInputFolder" webkitdirectory directory multiple style="display:none;" onchange="handleFileSelect(event)">
 
       <div class="cloud-icon">
@@ -1015,13 +1062,11 @@
       <div class="dropzone-subtitle" id="dropzoneSubtitle">Podporováno je přetažení souborů i složek s podadresáři (např. /Vasek/, /Manzelka/)</div>
       
       <div style="margin-top: 1.25rem; display: flex; justify-content: center; gap: 0.85rem; flex-wrap: wrap;">
-        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 14px rgba(16,185,129,0.35);" onclick="selectDirectFromWatch()" title="Přímo vybrat soubory FIT z paměti hodinek přes nová API prohlížeče">
+        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #818cf8, #4f46e5); box-shadow: 0 4px 14px rgba(129,140,248,0.35);" onclick="document.getElementById('fileInputFolder').click()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="7"/>
-            <polyline points="12 9 12 12 13.5 13.5"/>
-            <path d="M16.5 3.5l1 2M7.5 3.5l-1 2M16.5 20.5l1-2M7.5 20.5l-1-2"/>
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
-          <span>⌚ Načíst přímo z USB hodinek</span>
+          <span id="btnSelectFolder">Vybrat složku</span>
         </button>
 
         <button type="button" class="btn-export" style="background: linear-gradient(135deg, #38bdf8, #0284c7); box-shadow: 0 4px 14px rgba(56,189,248,0.35);" onclick="document.getElementById('fileInputFiles').click()">
@@ -1029,20 +1074,37 @@
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
-          <span id="btnSelectFiles">Vybrat .FIT soubory</span>
-        </button>
-
-        <button type="button" class="btn-export" style="background: linear-gradient(135deg, #818cf8, #4f46e5); box-shadow: 0 4px 14px rgba(129,140,248,0.35);" onclick="document.getElementById('fileInputFolder').click()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span id="btnSelectFolder">Vybrat složku</span>
+          <span id="btnSelectFiles">Vybrat soubory</span>
         </button>
       </div>
 
-      <div style="margin-top: 1rem; font-size: 0.78rem; color: #94a3b8; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.18); border-radius: 6px; padding: 0.4rem 0.8rem; display: inline-block; max-width: 600px; text-align: center;">
-        💡 <strong>Důležitá poznámka pro USB hodinky (MTP):</strong> Systém Windows neumožňuje webovému prohlížeči přímé čtení z USB paměti hodinek bez uložení (vyvolá okna <em>Uložit jako</em>). Pro okamžité načtení 70+ aktivit <strong>překopírujte složku Activity z hodinek na disk PC</strong> (např. do Stažené soubory nebo na Google Drive) a načtěte ji odtud tlačítkem <em>Vybrat složku</em>.
+      <div style="margin-top: 1.25rem; font-size: 0.78rem; color: #94a3b8; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.18); border-radius: 6px; padding: 0.75rem 1rem; display: block; max-width: 800px; margin-left: auto; margin-right: auto; text-align: left; line-height: 1.5;">
+        <strong style="color: #38bdf8;">Upozornění:</strong> Operační systém neumožňuje webovému prohlížeči přímé čtení z USB paměti zařízení. Pro dávkové načtení desítek aktivit překopírujte složku se soubory .FIT (např. Activity) ze zařízení na svůj lokální disk a načtěte ji odtud tlačítkem <strong>Vybrat složku</strong>. Pro načtení menšího množství jednotlivých souborů použijte tlačítko <strong>Vybrat soubory</strong>.
       </div>
+    </div>
+
+    <!-- Features Grid (Sexy Tiles) -->
+    <div class="features-grid" id="featuresGrid">
+      <div class="feature-tile">
+        <h4><span style="font-size: 1.2rem;">📊</span> .FIT Activity Comparator</h4>
+        <p>Porovnání 2 až 5 aktivit vedle sebe v reálném čase.</p>
+      </div>
+      <div class="feature-tile">
+        <h4><span style="font-size: 1.2rem;">🔒</span> 100% Soukromí</h4>
+        <p>Zero-Server klientské zpracování výhradně ve vašem prohlížeči.</p>
+      </div>
+      <div class="feature-tile">
+        <h4><span style="font-size: 1.2rem;">🤝</span> Široká kompatibilita</h4>
+        <p>Optimalizováno pro Garmin, podporuje i .FIT z ostatních značek.</p>
+      </div>
+      <div class="feature-tile">
+        <h4><span style="font-size: 1.2rem;">⚡</span> Chytrý export</h4>
+        <p>Interaktivní synchronizované grafy & export do Excelu / GPX / FIT.</p>
+      </div>
+    </div>
+    
+    <div id="featuresDisclaimer" style="text-align: center; font-size: 0.78rem; color: #64748b; margin-top: 1rem; max-width: 1000px; margin-left: auto; margin-right: auto;">
+      Nástroje jsou optimalizovány primárně pro .FIT soubory ze zařízení Garmin, ale základní analýza a oprava funguje i pro soubory jiných značek (Suunto, Polar, Wahoo). V případě zájmu o detailnější zpracování specifických dat jiných značek kontaktujte autora.
     </div>
 
     <!-- Status & Loading Progress Bar -->
@@ -1323,7 +1385,7 @@
     </div>
 
     <footer>
-      Garmin Activity Comparator &bull; 100% klientské zpracování v prohlížeči &bull; Leaflet & Chart.js & SheetJS
+      &copy; 2026 Václav Koucký (Ve-Ka-AI) &bull; Podpora: fit-tools@koucky.cz
     </footer>
 
   </div>
@@ -1337,7 +1399,7 @@
     // --- i18n Translations ---
     const i18n = {
       cz: {
-        appTitle: "Garmin Activity Comparator",
+        appTitle: ".FIT Activity Comparator",
         privacyText: "100% Lokální klientské zpracování (Browser-Only)",
         lblXAxis: "Osa X (Grafy):",
         btnXTime: "Čas",
@@ -1353,7 +1415,7 @@
         btnAlignAbs: "Absolutní",
         dropzoneTitle: "Přetáhněte sem .FIT soubory nebo celou složku",
         dropzoneSubtitle: "Podporováno je přetažení souborů i složek s podadresáři (např. /Vasek/, /Manzelka/)",
-        btnSelectFiles: "Vybrat .FIT soubory",
+        btnSelectFiles: "Vybrat soubory",
         btnSelectFolder: "Vybrat složku",
         titleSuggested: "Navržené dvojice & skupiny",
         titleFileList: "Vyberte 2 až 5 aktivit",
@@ -1403,7 +1465,7 @@
         modeSmart: "Chytrý záznam (Smart Recording)"
       },
       en: {
-        appTitle: "Garmin Activity Comparator",
+        appTitle: ".FIT Activity Comparator",
         privacyText: "100% Local Client Processing (Browser-Only)",
         lblXAxis: "X-Axis (Charts):",
         btnXTime: "Time",
@@ -1594,39 +1656,38 @@
       document.getElementById('btnEN').classList.toggle('active', lang === 'en');
       
       const t = i18n[lang];
-      document.getElementById('appTitle').innerText = t.appTitle;
-      document.getElementById('privacyText').innerText = t.privacyText;
-      document.getElementById('lblXAxis').innerText = t.lblXAxis;
-      document.getElementById('btnXDist').innerText = t.btnXDist;
-      document.getElementById('lblSpeedMode').innerText = t.lblSpeedMode;
-      document.getElementById('btnSpeed').innerText = t.btnSpeed;
-      document.getElementById('btnPace').innerText = t.btnPace;
-      document.getElementById('lblHRMode').innerText = t.lblHRMode;
-      document.getElementById('btnHRBpm').innerText = t.btnHRBpm;
-      document.getElementById('btnHRPercent').innerText = t.btnHRPercent;
-      document.getElementById('lblAlignMode').innerText = t.lblAlignMode;
-      document.getElementById('btnAlignCommon').innerText = t.btnAlignCommon;
-      document.getElementById('btnAlignAbs').innerText = t.btnAlignAbs;
-      document.getElementById('dropzoneTitle').innerText = t.dropzoneTitle;
-      document.getElementById('dropzoneSubtitle').innerText = t.dropzoneSubtitle;
-      document.getElementById('btnSelectFiles').innerText = t.btnSelectFiles;
-      document.getElementById('btnSelectFolder').innerText = t.btnSelectFolder;
-      document.getElementById('titleSuggested').querySelector('span').innerText = t.titleSuggested;
-      document.getElementById('titleFileList').querySelector('span').innerText = t.titleFileList;
-      document.getElementById('mapTitle').innerText = t.mapTitle;
-      document.getElementById('matrixTitle').innerText = t.matrixTitle;
-      document.getElementById('btnExportText').innerText = t.btnExportText;
+      if(document.getElementById('appTitle')) document.getElementById('appTitle').innerText = t.appTitle;
+      if(document.getElementById('lblXAxis')) document.getElementById('lblXAxis').innerText = t.lblXAxis;
+      if(document.getElementById('btnXDist')) document.getElementById('btnXDist').innerText = t.btnXDist;
+      if(document.getElementById('lblSpeedMode')) document.getElementById('lblSpeedMode').innerText = t.lblSpeedMode;
+      if(document.getElementById('btnSpeed')) document.getElementById('btnSpeed').innerText = t.btnSpeed;
+      if(document.getElementById('btnPace')) document.getElementById('btnPace').innerText = t.btnPace;
+      if(document.getElementById('lblHRMode')) document.getElementById('lblHRMode').innerText = t.lblHRMode;
+      if(document.getElementById('btnHRBpm')) document.getElementById('btnHRBpm').innerText = t.btnHRBpm;
+      if(document.getElementById('btnHRPercent')) document.getElementById('btnHRPercent').innerText = t.btnHRPercent;
+      if(document.getElementById('lblAlignMode')) document.getElementById('lblAlignMode').innerText = t.lblAlignMode;
+      if(document.getElementById('btnAlignCommon')) document.getElementById('btnAlignCommon').innerText = t.btnAlignCommon;
+      if(document.getElementById('btnAlignAbs')) document.getElementById('btnAlignAbs').innerText = t.btnAlignAbs;
+      if(document.getElementById('dropzoneTitle')) document.getElementById('dropzoneTitle').innerText = t.dropzoneTitle;
+      if(document.getElementById('dropzoneSubtitle')) document.getElementById('dropzoneSubtitle').innerText = t.dropzoneSubtitle;
+      if(document.getElementById('btnSelectFiles')) document.getElementById('btnSelectFiles').innerText = t.btnSelectFiles;
+      if(document.getElementById('btnSelectFolder')) document.getElementById('btnSelectFolder').innerText = t.btnSelectFolder;
+      if(document.getElementById('titleSuggested') && document.getElementById('titleSuggested').querySelector('span')) document.getElementById('titleSuggested').querySelector('span').innerText = t.titleSuggested;
+      if(document.getElementById('titleFileList') && document.getElementById('titleFileList').querySelector('span')) document.getElementById('titleFileList').querySelector('span').innerText = t.titleFileList;
+      if(document.getElementById('mapTitle')) document.getElementById('mapTitle').innerText = t.mapTitle;
+      if(document.getElementById('matrixTitle')) document.getElementById('matrixTitle').innerText = t.matrixTitle;
+      if(document.getElementById('btnExportText')) document.getElementById('btnExportText').innerText = t.btnExportText;
 
-      document.getElementById('titleAltChart').innerHTML = `<span style="color: #34d399;">●</span> ` + t.titleAltChart;
-      document.getElementById('titleSpeedChart').innerHTML = `<span style="color: #38bdf8;">●</span> ` + t.titleSpeedChart;
-      document.getElementById('titleHRChart').innerHTML = `<span style="color: #f43f5e;">●</span> ` + t.titleHRChart;
-      document.getElementById('titleTempChart').innerHTML = `<span style="color: #2dd4bf;">●</span> ` + t.titleTempChart;
-      document.getElementById('titleStaminaChart').innerHTML = `<span style="color: #c084fc;">●</span> ` + t.titleStaminaChart;
-      document.getElementById('titleGritChart').innerHTML = `<span style="color: #fbbf24;">●</span> ` + t.titleGritChart;
-      document.getElementById('titleFlowChart').innerHTML = `<span style="color: #f59e0b;">●</span> ` + t.titleFlowChart;
-      document.getElementById('titleBatteryChart').innerHTML = `<span style="color: #a7f3d0;">●</span> ` + t.titleBatteryChart;
-      document.getElementById('titleGpsQualityChart').innerHTML = `<span style="color: #60a5fa;">●</span> ` + t.titleGpsQualityChart;
-      document.getElementById('lblHiddenCharts').innerText = t.lblHiddenCharts;
+      if(document.getElementById('titleAltChart')) document.getElementById('titleAltChart').innerHTML = `<span style="color: #34d399;">●</span> ` + t.titleAltChart;
+      if(document.getElementById('titleSpeedChart')) document.getElementById('titleSpeedChart').innerHTML = `<span style="color: #38bdf8;">●</span> ` + t.titleSpeedChart;
+      if(document.getElementById('titleHRChart')) document.getElementById('titleHRChart').innerHTML = `<span style="color: #f43f5e;">●</span> ` + t.titleHRChart;
+      if(document.getElementById('titleTempChart')) document.getElementById('titleTempChart').innerHTML = `<span style="color: #2dd4bf;">●</span> ` + t.titleTempChart;
+      if(document.getElementById('titleStaminaChart')) document.getElementById('titleStaminaChart').innerHTML = `<span style="color: #c084fc;">●</span> ` + t.titleStaminaChart;
+      if(document.getElementById('titleGritChart')) document.getElementById('titleGritChart').innerHTML = `<span style="color: #fbbf24;">●</span> ` + t.titleGritChart;
+      if(document.getElementById('titleFlowChart')) document.getElementById('titleFlowChart').innerHTML = `<span style="color: #f59e0b;">●</span> ` + t.titleFlowChart;
+      if(document.getElementById('titleBatteryChart')) document.getElementById('titleBatteryChart').innerHTML = `<span style="color: #a7f3d0;">●</span> ` + t.titleBatteryChart;
+      if(document.getElementById('titleGpsQualityChart')) document.getElementById('titleGpsQualityChart').innerHTML = `<span style="color: #60a5fa;">●</span> ` + t.titleGpsQualityChart;
+      if(document.getElementById('lblHiddenCharts')) document.getElementById('lblHiddenCharts').innerText = t.lblHiddenCharts;
 
       if (allActivities.length > 0) {
         renderSidebar();
